@@ -1,0 +1,105 @@
+﻿" Uset compatibility with Vii
+set nocompatible
+
+" add user info variable
+let g:_author = "Bastien Chanot"
+let g:_email = "chanot.bastien@gmail.com"
+
+" Enable pathogen for plugins
+execute pathogen#infect()
+
+" Set colors options
+syntax on
+set t_Co=256
+colorscheme molokai
+
+" Set line numbers
+set number
+
+" Activate mouse click
+set mouse=a
+
+" Set some indent options
+set smartindent
+set autoindent
+filetype plugin indent on
+
+" make backspace work on all system
+set backspace=indent,eol,start
+
+" Set the encoding
+set encoding=utf-8
+
+" Activate cursor go on line at end/begin of line
+set whichwrap+=<,>,h,l,[,]
+
+" Set number of spacetab and the char to print
+let tab_placeholder='»·'
+let space_placeholder='·'
+execute "set list listchars=tab:". tab_placeholder .",trail:". space_placeholder
+set tabstop=4
+set shiftwidth=4
+set softtabstop=4
+
+" Activate sor syntastic options
+let g:syntastic_c_compiler = 'gcc'
+let g:syntastic_c_compiler_options = '-Wall -Werror -Wextra'
+let g:syntastic_check_on_open=1
+let g:syntastic_enable_signs=1
+let g:syntastic_c_remove_include_errors = 1
+let g:syntastic_c_include_dirs = ['../../../include', '../../include','../include','./include','../../../includes', '../../includes','../includes','./includes','../../../inc', '../../inc','../inc','./inc']
+
+" Open NERDTree with Ctrl + g
+noremap <C-g>				:NERDTreeToggle<CR>
+noremap <C-e>				:!
+noremap <C-t>				:tabedit 
+noremap <TAB>				:tabnext<CR>
+noremap <BACKSPACE>			:tabprev<CR>
+noremap <C-+>				:vertical resize +1<CR>
+noremap <C-->				:vertical resize -1<CR>
+
+" Fonction pour générer une classe avec règle canonique
+function! GenerateClassH(name)
+    execute "normal oclass " . a:name . " {"
+    execute "normal opublic:"
+    execute "normal o" . a:name . "();"
+    execute "normal o" . a:name . "(" . a:name . " const &src);"
+    execute "normal o~" . a:name . "();"
+    execute "normal o"
+    execute "normal o" . a:name . "\t&operator=(" . a:name . " const &src);"
+    execute "normal o"
+    execute "normal oprivate:"
+    execute "normal o"
+    execute "normal o};"
+endfunction
+
+" Commande :Class Test1
+command! -nargs=1 ClassH call GenerateClassH(<f-args>)
+
+" Fonction pour générer une classe avec règle canonique
+function! GenerateClassC(name)
+	execute "normal o" . name . "::" . name . "(void) {"
+	execute "normal o	std::cout << \"Default constructor called\" << std::endl;"
+	execute "normal o	return ;"
+	execute "normal o}"
+	execute "normal o"
+	execute "normal o" . name . "::" . name . "(" . name . " const &src) {"
+	execute "normal o	*this = src;"
+	execute "normal o	std::cout << \"Copy constructor called\" << std::endl;"
+	execute "normal o	return ;"
+	execute "normal o}"
+	execute "normal o"
+	execute "normal o" . name . "::~" . name . "(void) {"
+	execute "normal o	std::cout << \"Default destructor called\" << std::endl;"
+	execute "normal o	return ;"
+	execute "normal o}"
+	execute "normal o"
+	execute "normal o" . name . "				&" . name . "::operator=(" . name . " const &src) {"
+	execute "normal o	std::cout << \"Copy assignment operator called\" << std::endl;"
+	execute "normal o	return *this;"
+	execute "normal o}"
+endfunction
+
+" Commande :Class Test1
+command! -nargs=1 ClassC call GenerateClassC(<f-args>)
+
