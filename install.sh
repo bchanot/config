@@ -22,11 +22,13 @@ echo "Cloning some git repositories"
 #git clone --quiet https://github.com/tpope/vim-pathogen $HOME/.vim/pathogen
 git clone --quiet https://github.com/vim-syntastic/syntastic $HOME/.vim/bundle/syntastic
 git clone --quiet https://github.com/tomasr/molokai /tmp/molokai
+git clone --quiet https://github.com/preservim/nerdtree /tmp/nerdtree
 
 echo "Building new vim"
 cp -rupv ./vim/* $HOME/.vim
 #ln -s $HOME/.vim/pathogen/autoload/pathogen.vim $HOME/.vim/autoload/pathogen.vim
 cp /tmp/molokai/colors/molokai.vim $HOME/.vim/colors
+cp /tmp/nerdtree $HOME/.vim/bundle/
 ln -s $HOME/.vim/vimrc $HOME/.vimrc
 
 if [ "$1" == "server" ]; then
