@@ -1,0 +1,104 @@
+#!/usr/bin/env bash
+# dt — gestionnaire de sessions claude-dans-dtach (1 session = 1 claude = 1 socket)
+# Sockets dans ~/.dtach/. La creation se fait via l'alias `cc` (voir plus bas),
+# pas ici : dt ne gere que listing / rattachement / kill.
+#
+#   dt ls            lister (nom, age, dossier, commande)
+#   dt at <nom>      rattacher une session
+#   dt kill <nom>    tuer une session
+#   dt --raw         listing TSV (pour fzf)
+#   dt sock <nom>    imprime le chemin du socket (utilitaire interne)
+#
+# Detacher une session attachee : Ctrl-\
+#
+# CREATION (a mettre dans ~/.bashrc) :
+#   dtach_claude() { dtach -c "$HOME/.dtach/${1:-claude-$(date +%H%M%S)}" -e '^\' claude; }
+#   alias cc='dtach_claude'
+#   # usage : cd ~/projets/seo && cc seo
+set -uo pipefail
+
+DTDIR="${DTACH_DIR:-$HOME/.dtach}"
+mkdir -p "$DTDIR"
+now=$(date +%s)
+
+# PID(s) du process dtach pour ce socket, via la cmdline (ss ne liste pas les
+# sockets dtach de maniere fiable selon la version). Matche -c/-n/-A/-N.
+_pids_for_socket() {
+  local sock="$1"
+  pgrep -f -- "dtach -[cnAN] $sock" 2>/dev/null | sort -u
+}
+
+_cwd_of() { readlink -f "/proc/$1/cwd" 2>/dev/null; }
+
+# Heure de demarrage REELLE du process (fiable, immuable), en epoch.
+_starttime_of() {
+  local ls; ls=$(ps -o lstart= -p "$1" 2>/dev/null) || return
+  [ -n "$ls" ] && date -d "$ls" +%s 2>/dev/null
+}
+
+_age() {
+  local epoch="${1:-$now}"
+  # garde-fou : si epoch n'est pas numerique, age=0
+  [[ "$epoch" =~ ^[0-9]+$ ]] || epoch="$now"
+  local age="$(( now - epoch ))"
+  (( age < 0 )) && age=0
+  if   (( age<60 ));   then echo "${age}s"
+  elif (( age<3600 )); then echo "$(( age/60 ))m"
+  elif (( age<86400));then echo "$(( age/3600 ))h$(( (age%3600)/60 ))m"
+  else                      echo "$(( age/86400 ))j$(( (age%86400)/3600 ))h"; fi
+}
+
+# Une ligne TSV par session vivante. Nettoie les sockets morts au passage.
+emit_raw() {
+  shopt -s nullglob
+  local sock name pids master cwd start
+  for sock in "$DTDIR"/*; do
+    [ -S "$sock" ] || continue
+    name=$(basename "$sock")
+    pids=$(_pids_for_socket "$sock")
+    if [ -z "$pids" ]; then rm -f "$sock"; continue; fi   # orphelin -> menage
+    master=$(echo "$pids" | head -1)
+    cwd=$(_cwd_of "$master");        cwd="${cwd:-?}"
+    start=$(_starttime_of "$master"); start="${start:-$now}"
+    # colonnes : NOM(cache pour fzf) TAB DOSSIER TAB AGE
+    printf '%s\t%s\t%s\n' "$name" "${cwd/#$HOME/\~}" "$(_age "$start")"
+  done
+}
+
+cmd_at() {
+  local name="${1:?nom requis}"; local sock="$DTDIR/$name"
+  [ -S "$sock" ] || { echo "Session '$name' introuvable."; return 1; }
+  exec dtach -a "$sock" -e '^\'
+}
+
+cmd_kill() {
+  local name="${1:?nom requis}"; local sock="$DTDIR/$name"
+  [ -S "$sock" ] || { echo "Session '$name' introuvable."; return 1; }
+  local master; master=$(_pids_for_socket "$sock" | head -1)
+  [ -n "$master" ] && kill "$master" 2>/dev/null
+  rm -f "$sock"
+  echo "Session '$name' tuee."
+}
+
+cmd_sock() { echo "$DTDIR/${1:?nom requis}"; }
+
+cmd_ls() {
+  local rows; rows=$(emit_raw)
+  if [ -z "$rows" ]; then echo "Aucune session dtach."; return 0; fi
+  printf '\n  \033[1;36mSessions claude\033[0m\n\n'
+  printf '  \033[2m%-40s %s\033[0m\n' DOSSIER AGE
+  printf '%s\n' "$rows" | while IFS=$'\t' read -r name cwd age; do
+    printf '  \033[34m%-40s\033[0m \033[33m%s\033[0m\n' "$cwd" "$age"
+  done
+  printf '\n'
+}
+
+case "${1:-}" in
+  ls)    shift; cmd_ls "$@" ;;
+  at)    shift; cmd_at "$@" ;;
+  kill)  shift; cmd_kill "$@" ;;
+  sock)  shift; cmd_sock "$@" ;;
+  --raw) emit_raw ;;
+  ""|-h|--help) sed -n '2,18p' "$0" | sed 's/^# \?//' ;;
+  *) echo "Commande inconnue: $1"; sed -n '2,18p' "$0" | sed 's/^# \?//'; exit 1 ;;
+esac

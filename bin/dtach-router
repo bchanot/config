@@ -1,0 +1,54 @@
+#!/usr/bin/env bash
+# dtach-router — au login SSH : s'il existe des sessions claude/dtach, affiche
+# le dashboard et propose d'en rejoindre une (fzf). Sinon, shell normal direct.
+# NE CREE PLUS de session (la creation se fait via l'alias `cc`).
+# À SOURCER depuis ~/.bashrc. Pas de set -e/-u (fuiraient dans le shell hote).
+set -o pipefail
+
+# SSH interactif uniquement ; sinon on ne fait rien.
+case $- in *i*) ;; *) return 0 2>/dev/null ;; esac
+
+DT="${DT_BIN:-dt}"
+
+raw=$("$DT" --raw 2>/dev/null)
+
+# Aucune session : shell normal, zero friction.
+[ -z "$raw" ] && return 0 2>/dev/null
+
+# Des sessions existent : dashboard + menu de selection.
+"$DT" ls || true
+
+out=$(printf '%s\n' "$raw" | \
+  fzf --with-nth=2,3 --delimiter='\t' \
+      --header=$'ENTER=rejoindre une session   ESC=shell normal' \
+      --preview 'echo "Dossier : {2}"; echo "Age     : {3}"' \
+      --preview-window=down,15% )
+
+# ESC / selection vide : shell normal.
+[ -z "$out" ] && return 0 2>/dev/null
+
+name=$(printf '%s' "$out" | cut -f1)
+dt at "$name" </dev/tty >/dev/tty 2>&1
+return 0 2>/dev/null
+
+# ─────────────────────────────────────────────────────────────
+# INSTALLATION (~/.bashrc serveur), a la fin :
+#
+#   # creation de session claude-dans-dtach
+#   dtach_claude() { dtach -c "$HOME/.dtach/${1:-claude-$(date +%H%M%S)}" -e '^\' claude; }
+#   alias cc='dtach_claude'
+#
+#   # dashboard + reprise au login
+#   [ -x "$HOME/.local/bin/dtach-router" ] && source "$HOME/.local/bin/dtach-router"
+#
+#   # rappeler le menu depuis un shell :
+#   alias d='source ~/.local/bin/dtach-router'
+#
+# chmod +x ~/.local/bin/dt ~/.local/bin/dtach-router
+#
+# USAGE :
+#   cd ~/projets/seo && cc seo      -> claude dans dtach, session "seo"
+#   Ctrl-\                          -> detache, retour au shell
+#   (au prochain login)             -> dashboard propose "seo", ENTER pour reprendre
+# ─────────────────────────────────────────────────────────────
+

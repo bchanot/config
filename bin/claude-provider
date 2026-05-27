@@ -1,0 +1,63 @@
+#!/bin/bash
+# Switch Claude Code between Anthropic (default) and OpenRouter.
+# Usage: claude-provider [anthropic|openrouter|status]
+# After switching, re-source your shell or run: cpsource
+#
+# OpenRouter mode reads the API key from $OPENROUTER_API_KEY at source time —
+# the key is NOT stored in this script or in the repo. Export it from a private,
+# untracked location (e.g. ~/.bashrc.local):
+#   export OPENROUTER_API_KEY="<your-openrouter-key>"
+
+PROVIDER_FILE="$HOME/.claude-provider-env"
+
+write_anthropic() {
+    cat > "$PROVIDER_FILE" << 'EOF'
+# Claude provider: Anthropic (default)
+unset ANTHROPIC_BASE_URL
+unset ANTHROPIC_API_KEY
+unset ANTHROPIC_DEFAULT_SONNET_MODEL
+export CLAUDE_PROVIDER="anthropic"
+EOF
+    echo "Switched to Anthropic (default)."
+    echo "Run: cpsource   (or restart your shell)"
+}
+
+write_openrouter() {
+    cat > "$PROVIDER_FILE" << 'EOF'
+# Claude provider: OpenRouter
+# Key comes from $OPENROUTER_API_KEY in your environment (never hardcoded here).
+export ANTHROPIC_BASE_URL="https://openrouter.ai/api"
+export ANTHROPIC_API_KEY="${OPENROUTER_API_KEY:?Set OPENROUTER_API_KEY in your environment to use OpenRouter}"
+export CLAUDE_PROVIDER="openrouter"
+export ANTHROPIC_DEFAULT_SONNET_MODEL="google/gemma-4-31b-it:free"
+EOF
+    echo "Switched to OpenRouter."
+    echo "Run: cpsource   (or restart your shell)"
+}
+
+show_status() {
+    local provider="${CLAUDE_PROVIDER:-anthropic}"
+    echo "Current provider: $provider"
+    if [ -f "$PROVIDER_FILE" ]; then
+        echo "Config file: $PROVIDER_FILE"
+    fi
+}
+
+case "${1:-status}" in
+    openrouter|or)
+        write_openrouter
+        ;;
+    anthropic|an)
+        write_anthropic
+        ;;
+    status|st)
+        show_status
+        ;;
+    *)
+        echo "Usage: claude-provider [anthropic|openrouter|status]"
+        echo "  anthropic (an)   — Use Anthropic directly (default)"
+        echo "  openrouter (or)  — Use OpenRouter proxy"
+        echo "  status (st)      — Show current provider"
+        exit 1
+        ;;
+esac
