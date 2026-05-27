@@ -10,3 +10,5 @@ Created README, CLAUDE.md, .gitignore, .claude memory/tasks/audits. No secrets f
 Open: vimrc GenerateClassC bug (BLK-001), bashrc backtick style nits.
 Then: install.sh arg dropped → uname OS-detect (Darwin→osx else linux). Deleted bashrc-server.
 Added remote-install.sh curl|bash bootstrap (BDR-004). shellcheck CLEAN. Docs synced.
+Committed in 4 atomic commits (chore claude / refactor install / feat remote-install / docs).
+Slip: staged deletion swept into commit 1; fixed via soft-reset + restore --staged. Unpushed.
