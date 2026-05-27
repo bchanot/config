@@ -6,11 +6,43 @@ set -euo pipefail
 # Resolve the repo root so the script works from any working directory.
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
+# Set up Docker's official Ubuntu apt repo, then install the engine + compose plugin.
+# Idempotent: skips entirely if docker is already on PATH. Ubuntu-only (uses the ubuntu repo).
+install_docker() {
+	if command -v docker >/dev/null 2>&1; then
+		echo "docker already installed — skipping Docker repo setup"
+		return
+	fi
+	echo "Setting up Docker apt repo"
+	sudo install -m 0755 -d /etc/apt/keyrings
+	sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+	sudo chmod a+r /etc/apt/keyrings/docker.asc
+	local codename arch
+	# shellcheck disable=SC1091  # /etc/os-release is sourced at runtime, not available to the linter.
+	codename="$(. /etc/os-release && echo "${VERSION_CODENAME}")"
+	arch="$(dpkg --print-architecture)"
+	echo "deb [arch=${arch} signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu ${codename} stable" |
+		sudo tee /etc/apt/sources.list.d/docker.list >/dev/null
+	sudo apt-get update
+	sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+}
+
 # System packages: Debian/Ubuntu only. Skipped where apt-get is absent (e.g. macOS).
 if command -v apt-get >/dev/null 2>&1; then
 	sudo apt-get update
 	sudo apt-get upgrade -y
-	sudo apt-get install -y vim git gcc make pkg-config unzip dkms git-lfs
+
+	# Build + version control + C dev tooling.
+	sudo apt-get install -y \
+		vim git git-lfs git-filter-repo gcc make pkg-config dkms valgrind shellcheck \
+		curl gnupg ca-certificates apt-transport-https \
+		unzip tree tmux fzf dtach net-tools \
+		openssh-server cifs-utils lftp ftp \
+		nodejs python3-pip pipx php-cli \
+		ffmpeg wkhtmltopdf poppler-utils qpdf webp libavif-bin
+
+	# Docker (separate repo).
+	install_docker
 else
 	echo "apt-get not found — skipping system packages (install vim/git manually)."
 fi
@@ -51,5 +83,20 @@ fi
 echo "Deploying $bashrc"
 cp "$SCRIPT_DIR/$bashrc" "$HOME/.bashrc"
 
+# Python CLIs via pipx (run as the user, never sudo). Skipped if pipx is absent.
+if command -v pipx >/dev/null 2>&1; then
+	echo "Installing pipx CLIs (PyMuPDF -> pymupdf, Markdown -> markdown_py)"
+	pipx install PyMuPDF || pipx upgrade PyMuPDF
+	pipx install Markdown || pipx upgrade Markdown
+	pipx ensurepath >/dev/null
+fi
+
+# Deploy personal CLI scripts to ~/.local/bin (dt, dtach-router, claude-provider).
+echo "Deploying CLI scripts to ~/.local/bin"
+mkdir -p "$HOME/.local/bin"
+cp "$SCRIPT_DIR"/bin/* "$HOME/.local/bin/"
+chmod +x "$HOME"/.local/bin/dt "$HOME"/.local/bin/dtach-router "$HOME"/.local/bin/claude-provider
+
 echo "Done. Restart your shell or run: source ~/.bashrc"
 echo "If you use zsh, switch to bash to enjoy these settings =)"
+echo "Note: ~/.local/bin must be on PATH (pipx ensurepath handles it; re-login if needed)."

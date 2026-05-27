@@ -21,8 +21,14 @@ vim/vimrc             vim config (pathogen, molokai, syntastic, NERDTree)
 vim/autoload/         pathogen loader (committed)
 vim/colors/           molokai colorscheme (committed)
 bash/bashrc-{linux,osx}          OS-detected bashrc
+bin/{dt,dtach-router,claude-provider}   CLI scripts deployed to ~/.local/bin
 .claude/{tasks,memory,audits}/   Claude working state
 ```
+
+`pymupdf`/`markdown_py` are NOT tracked — they are pipx entry-point shims,
+recreated by `pipx install PyMuPDF Markdown` in install.sh.
+`claude-provider` reads `$OPENROUTER_API_KEY` from the env — never hardcode it (the
+original had a live key; it was scrubbed — see decisions/blockers).
 
 ## Commands
 

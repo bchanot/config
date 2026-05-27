@@ -2,16 +2,29 @@
 
 Personal dotfiles — vim + bash configuration and a one-shot installer.
 
+## Quick start
+
+Install everything (clone + setup) with one command:
+
+```sh
+curl -fsSL https://git.bchanot.fr/bchanot/config/raw/branch/master/remote-install.sh | bash
+```
+
+(Runs a remote script through `bash` — see the [Install](#install) section for what it does and the manual alternative.)
+
 ## What's inside
 
 | Path                 | Purpose                                                        |
 | -------------------- | -------------------------------------------------------------- |
-| `install.sh`         | Backs up existing config, then deploys vim + bashrc for a target. |
+| `install.sh`         | Installs apt packages + Docker, backs up old config, deploys vim + bashrc (OS-detected), installs CLI scripts. |
 | `vim/vimrc`          | Vim config: pathogen, molokai, syntastic (C with `-Wall -Werror -Wextra`), NERDTree, 42-style canonical class generators (`:ClassH`, `:ClassC`). |
 | `vim/autoload/`      | `pathogen.vim` plugin loader (committed).                      |
 | `vim/colors/`        | `molokai.vim` colorscheme (committed).                         |
 | `bash/bashrc-linux`  | bashrc for desktop Linux (git-aware prompt + command timer).   |
 | `bash/bashrc-osx`    | bashrc for macOS.                                              |
+| `bin/dt`             | dtach session manager for claude-in-dtach sessions.            |
+| `bin/dtach-router`   | SSH-login dashboard to resume dtach sessions (sourced from bashrc). |
+| `bin/claude-provider`| Switch Claude Code between Anthropic and OpenRouter.           |
 
 ## Install
 
@@ -36,15 +49,40 @@ No argument — the OS is auto-detected.
 
 What it does:
 
-1. On Debian/Ubuntu, installs `vim git gcc make pkg-config unzip dkms git-lfs` via `apt-get`. Skipped automatically where `apt-get` is absent (macOS).
-2. Moves any existing `~/.vim`, `~/.vimrc`, `~/.bashrc`, `~/.Sublivim` to `~/Oldconfig`.
-3. Clones the `syntastic` and `nerdtree` vim plugins into `~/.vim/bundle/`.
-4. Copies the tracked vim files into `~/.vim` and symlinks `~/.vimrc`.
-5. Picks the bashrc by OS: macOS → `bashrc-osx` (falls back to `bashrc-linux` if missing), everything else → `bashrc-linux`. Copies it to `~/.bashrc`.
+1. On Debian/Ubuntu, installs a set of CLI/dev packages via `apt-get` (see below). Skipped automatically where `apt-get` is absent (macOS).
+2. Sets up Docker's official apt repo (Ubuntu) and installs the engine + compose plugin — skipped if `docker` is already present.
+3. Moves any existing `~/.vim`, `~/.vimrc`, `~/.bashrc`, `~/.Sublivim` to `~/Oldconfig`.
+4. Clones the `syntastic` and `nerdtree` vim plugins into `~/.vim/bundle/`.
+5. Copies the tracked vim files into `~/.vim` and symlinks `~/.vimrc`.
+6. Picks the bashrc by OS: macOS → `bashrc-osx` (falls back to `bashrc-linux` if missing), everything else → `bashrc-linux`. Copies it to `~/.bashrc`.
+7. Installs Python CLIs via `pipx` (`PyMuPDF` → `pymupdf`, `Markdown` → `markdown_py`) — skipped if `pipx` is absent.
+8. Copies the `bin/` scripts (`dt`, `dtach-router`, `claude-provider`) into `~/.local/bin`.
 
-The script is re-runnable: each run re-backs up to `~/Oldconfig` (overwriting the previous backup) and re-clones plugins.
+### Packages installed (apt)
 
-> macOS note: the `osx` target skips `apt-get` but still expects `vim`, `git`, and a Homebrew-installed toolchain to be present.
+- **Build / VCS / C dev**: `vim git git-lfs git-filter-repo gcc make pkg-config dkms valgrind shellcheck`
+- **Net / security / transport**: `curl gnupg ca-certificates apt-transport-https net-tools openssh-server cifs-utils lftp ftp`
+- **Shell tooling**: `unzip tree tmux fzf dtach`
+- **Runtimes**: `nodejs python3-pip pipx php-cli`
+- **Media / doc CLI**: `ffmpeg wkhtmltopdf poppler-utils qpdf webp libavif-bin`
+- **Docker**: `docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin` (via Docker's repo)
+- **pipx**: `PyMuPDF` (`pymupdf`), `Markdown` (`markdown_py`)
+
+The script is re-runnable: each run re-backs up to `~/Oldconfig` (overwriting the previous backup), re-clones plugins, skips Docker if already installed, and re-deploys the `bin/` scripts.
+
+> Notes: the package list is Debian/Ubuntu-specific, and the Docker repo step assumes **Ubuntu**. On macOS the whole `apt-get` block is skipped — install `vim`/`git`/toolchain via Homebrew yourself.
+
+### CLI scripts (`bin/`)
+
+Deployed to `~/.local/bin` (must be on `PATH` — `pipx ensurepath` adds it):
+
+- **`dt`** — manage claude-in-dtach sessions (`dt ls|at|kill`). Needs `dtach` + `fzf`.
+- **`dtach-router`** — source from `~/.bashrc` to get a session dashboard on SSH login. Needs `dt`, `dtach`, `fzf`.
+- **`claude-provider`** — switch Claude Code between Anthropic and OpenRouter.
+  OpenRouter mode reads the key from **`$OPENROUTER_API_KEY`** (never hardcoded). Export it from a private, untracked file, e.g. `~/.bashrc.local`:
+  ```sh
+  export OPENROUTER_API_KEY="<your-openrouter-key>"
+  ```
 
 ## Requirements
 
