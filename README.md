@@ -74,7 +74,7 @@ The script is re-runnable: each run re-backs up to `~/Oldconfig` (overwriting th
 
 ### CLI scripts (`bin/`)
 
-Deployed to `~/.local/bin` (must be on `PATH` — `pipx ensurepath` adds it):
+Deployed to `~/.local/bin` (the deployed bashrc adds this dir to `PATH`):
 
 - **`dt`** — manage claude-in-dtach sessions (`dt ls|at|kill`). Needs `dtach` + `fzf`.
 - **`dtach-router`** — source from `~/.bashrc` to get a session dashboard on SSH login. Needs `dt`, `dtach`, `fzf`.

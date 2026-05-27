@@ -99,4 +99,4 @@ chmod +x "$HOME"/.local/bin/dt "$HOME"/.local/bin/dtach-router "$HOME"/.local/bi
 
 echo "Done. Restart your shell or run: source ~/.bashrc"
 echo "If you use zsh, switch to bash to enjoy these settings =)"
-echo "Note: ~/.local/bin must be on PATH (pipx ensurepath handles it; re-login if needed)."
+echo "Note: the deployed bashrc puts ~/.local/bin on PATH — re-login or run: source ~/.bashrc"
