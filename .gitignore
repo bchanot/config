@@ -1,0 +1,17 @@
+# OS junk
+.DS_Store
+Thumbs.db
+
+# Vim swap / backup
+*.swp
+*.swo
+*~
+
+# Local install backup (created by install.sh)
+Oldconfig/
+
+# onboard audit raw outputs (consumed by /onboard STEP 7)
+.onboard-audit/
+
+# Claude local settings (machine-specific)
+.claude/settings.local.json
