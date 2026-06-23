@@ -23,3 +23,13 @@ REPO_URL/CLONE_DIR/BRANCH), pulls if exists, ensures git first, then `bash insta
 Alt rejected: temp-dir + tarball download (no git dep) — kept git path, simpler + repo
 needs git anyway. Risk noted: curl|bash runs unreviewed remote code (archetype pain point);
 mitigated by HTTPS + pinned branch + manual fallback in README, not eliminated. Status: done.
+
+## BDR-005 — Remote desktop via gnome-remote-desktop --system, not xrdp
+2026-06-23. Target machine = Wayland-only GNOME (Shell asserts XDG_SESSION_TYPE=wayland). xrdp's
+Xorg backend can't satisfy it → session dies instantly on login. Chose gnome-remote-desktop system
+"Remote Login" (GNOME-native, Wayland, RDP 3389, TLS, fresh GDM session). Auth 2-layer: shared gate
+creds (`set-credentials`) → per-user GDM PAM; gate creds required else mstsc 0x904 (BLK-004).
+Implemented install.sh `setup_remote_desktop` + `ensure_rdp_credentials`. Connection confirmed live.
+Alts rejected: (a) force Xorg GDM + xrdp — sacrifices Wayland desktop, fragile; (b) VNC (wayvnc) —
+RDP preferred (mstsc native on Win client, TLS); (c) g-r-d user "Desktop Sharing" mode — shares
+existing local session, wanted independent headless login. See LRN-004, BLK-004. Status: done.
