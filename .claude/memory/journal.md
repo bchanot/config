@@ -26,3 +26,9 @@ xrdp abandoned (Wayland-only GNOME kills Xorg session). Replaced install_xrdp �
 empty (BLK-004); 2-layer auth gate→GDM PAM (LRN-004). Added ensure_rdp_credentials (prompt, TTY-guard,
 idempotent). Connection CONFIRMED live. install.sh committed 0bd936b (bash -n + shellcheck CLEAN);
 push blocked here (HTTPS remote, no creds in env) → user pushes. TPM GKeyFile-fallback warn harmless.
+
+## 2026-06-24 — disk-usage login warning
+Added etc/profile.d/disk-usage-warning.sh (POSIX sh, warns bold red when / or /home ≥85%).
+install_disk_warning() in install.sh: sudo install -D -m 0644 → /etc/profile.d, gated in apt block
+(Linux-only: df --output=pcent GNU-only + /etc/profile.d Debian convention). shellcheck + sh -n CLEAN,
+both code paths runtime-verified. README + CLAUDE.md synced. Not committed (master, user to confirm).

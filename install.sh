@@ -102,6 +102,17 @@ setup_remote_desktop() {
 	sudo systemctl restart gnome-remote-desktop.service
 }
 
+# Disk-usage login warning: a profile.d snippet that warns (bold red) at login when
+# / or /home cross the usage threshold. Deployed system-wide so every login shell
+# sources it. /etc/profile.d is a Debian/Ubuntu convention and df --output=pcent is
+# GNU-only, so this is Linux-only (called from the apt-get block). Idempotent: install
+# overwrites in place and -D creates the dir if missing.
+install_disk_warning() {
+	echo "Installing disk-usage login warning to /etc/profile.d"
+	sudo install -D -m 0644 "$SCRIPT_DIR/etc/profile.d/disk-usage-warning.sh" \
+		/etc/profile.d/disk-usage-warning.sh
+}
+
 # System packages: Debian/Ubuntu only. Skipped where apt-get is absent (e.g. macOS).
 if command -v apt-get >/dev/null 2>&1; then
 	sudo apt-get update
@@ -127,6 +138,9 @@ if command -v apt-get >/dev/null 2>&1; then
 
 	# Remote desktop (gnome-remote-desktop — see the function header for why not xrdp).
 	setup_remote_desktop
+
+	# Low-disk login warning (system-wide profile.d snippet).
+	install_disk_warning
 else
 	echo "apt-get not found — skipping system packages (install vim/git manually)."
 fi

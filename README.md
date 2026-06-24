@@ -25,6 +25,7 @@ curl -fsSL https://git.bchanot.fr/bchanot/config/raw/branch/master/remote-instal
 | `bin/dt`             | dtach session manager for claude-in-dtach sessions.            |
 | `bin/dtach-router`   | SSH-login dashboard to resume dtach sessions (sourced from bashrc). |
 | `bin/claude-provider`| Switch Claude Code between Anthropic and OpenRouter.           |
+| `etc/profile.d/disk-usage-warning.sh` | Login-time warning (bold red) when `/` or `/home` cross 85% usage. Deployed to `/etc/profile.d/` on Linux. |
 
 ## Install
 
@@ -57,6 +58,7 @@ What it does:
 6. Picks the bashrc by OS: macOS → `bashrc-osx` (falls back to `bashrc-linux` if missing), everything else → `bashrc-linux`. Copies it to `~/.bashrc`.
 7. Installs Python CLIs via `pipx` (`PyMuPDF` → `pymupdf`, `Markdown` → `markdown_py`) — skipped if `pipx` is absent.
 8. Copies the `bin/` scripts (`dt`, `dtach-router`, `claude-provider`) into `~/.local/bin`.
+9. On Linux, installs `etc/profile.d/disk-usage-warning.sh` to `/etc/profile.d/` (needs `sudo`) so each login warns when `/` or `/home` cross 85% usage.
 
 ### Packages installed (apt)
 

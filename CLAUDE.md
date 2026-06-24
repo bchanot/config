@@ -22,6 +22,7 @@ vim/autoload/         pathogen loader (committed)
 vim/colors/           molokai colorscheme (committed)
 bash/bashrc-{linux,osx}          OS-detected bashrc
 bin/{dt,dtach-router,claude-provider}   CLI scripts deployed to ~/.local/bin
+etc/profile.d/disk-usage-warning.sh     login-time low-disk warning → /etc/profile.d (Linux only)
 .claude/{tasks,memory,audits}/   Claude working state
 ```
 

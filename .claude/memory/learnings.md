@@ -29,3 +29,10 @@ enable+start `gnome-remote-desktop.service`. Auth = 2 layers: shared gate creds 
 Listening socket + TLS + enable NOT enough alone. TPM warn `Init TPM credentials failed ... using
 GKeyFile as fallback` = harmless on TPM-less host (creds → keyfile). Connect: client → ip:3389,
 accept self-signed cert, gate creds, then GDM user. Supersedes LRN-003 for Wayland GNOME.
+
+## LRN-005 — df --output=pcent is GNU-only → keep /etc/profile.d disk scripts Linux-gated
+2026-06-24. `df --output=pcent` (and `/etc/profile.d` itself) are GNU coreutils / Debian conventions,
+absent on macOS BSD df. Any install step deploying such a snippet system-wide must sit inside the
+`command -v apt-get` (Linux) block, never the OS-agnostic path. Deploy idempotently with
+`sudo install -D -m 0644 src /etc/profile.d/x.sh` (-D makes the dir, overwrite = re-runnable). Caveat:
+`/etc/profile.d/*.sh` runs for LOGIN shells only — non-login terminals need `/etc/bash.bashrc` instead.

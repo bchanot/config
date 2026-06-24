@@ -33,3 +33,10 @@ Implemented install.sh `setup_remote_desktop` + `ensure_rdp_credentials`. Connec
 Alts rejected: (a) force Xorg GDM + xrdp — sacrifices Wayland desktop, fragile; (b) VNC (wayvnc) —
 RDP preferred (mstsc native on Win client, TLS); (c) g-r-d user "Desktop Sharing" mode — shares
 existing local session, wanted independent headless login. See LRN-004, BLK-004. Status: done.
+
+## BDR-006 — Disk-usage login warning deployed system-wide to /etc/profile.d
+2026-06-24. New `etc/profile.d/disk-usage-warning.sh` (POSIX sh, bold-red warn when / or /home ≥85%)
+deployed via `sudo install -D -m 0644` to `/etc/profile.d/` from `install_disk_warning()`, gated in
+the apt-get Linux block (see LRN-005). Alt rejected: per-user append to `~/.bashrc` — wanted the warn
+for EVERY login account on the box, not just the installing user, so system-wide profile.d won. Known
+limit: login-shell scope only (non-login terminals miss it). Status: done.
