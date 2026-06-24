@@ -66,7 +66,7 @@ What it does:
 - **Net / security / transport**: `curl gnupg ca-certificates apt-transport-https net-tools openssh-server cifs-utils lftp ftp`
 - **Shell tooling**: `unzip tree tmux fzf dtach`
 - **Runtimes**: `nodejs python3-pip pipx php-cli`
-- **Media / doc CLI**: `ffmpeg wkhtmltopdf poppler-utils qpdf webp libavif-bin`
+- **Media / doc CLI**: `ffmpeg weasyprint poppler-utils qpdf webp libavif-bin`
 - **Docker**: `docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin` (via Docker's repo)
 - **pipx**: `PyMuPDF` (`pymupdf`), `Markdown` (`markdown_py`)
 
