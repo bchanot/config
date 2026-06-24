@@ -32,3 +32,12 @@ Added etc/profile.d/disk-usage-warning.sh (POSIX sh, warns bold red when / or /h
 install_disk_warning() in install.sh: sudo install -D -m 0644 → /etc/profile.d, gated in apt block
 (Linux-only: df --output=pcent GNU-only + /etc/profile.d Debian convention). shellcheck + sh -n CLEAN,
 both code paths runtime-verified. README + CLAUDE.md synced. Not committed (master, user to confirm).
+
+## 2026-06-24 — dtach login wiring fix (source not execute) + cc/d aliases
+Old ~/.profile block EXECUTED dtach-router + parsed "Aucune session dtach." → broken: executing breaks
+the script's return-based interactive guard → falls through → fzf/`dt at >/dev/tty` errors `/dev/tty: No
+such device` in every non-interactive login shell (repro'd live on each Bash init). Replaced with guarded
+SOURCE `case $- in *i*) ... . dtach-router` via idempotent wire_dtach_profile() (awk strips legacy +
+marker block, re-appends marker block). Added cc (create) / d (re-summon) aliases to bashrc-linux.
+shellcheck + bash -n CLEAN; migration simulated on real .profile copy. LRN-006 + BDR-007. README synced.
+Not committed; live ~/.profile not yet re-migrated.

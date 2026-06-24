@@ -113,6 +113,34 @@ install_disk_warning() {
 		/etc/profile.d/disk-usage-warning.sh
 }
 
+# Wire the dtach session-resume menu into ~/.profile. At interactive login we SOURCE
+# dtach-router rather than execute it: the script hands control back with `return` and
+# attaches to the host TTY, so running it as a command makes its interactivity guard
+# fail and errors on /dev/tty whenever the login shell is non-interactive (bash -lc,
+# cron, scp). Sourced, the guard works and it is a silent no-op when no session exists.
+# Idempotent: strips any prior block first — the marker-delimited managed one AND the
+# legacy execute-based one (DT=$(dt ls) ... fi) from earlier installs. User scope, no sudo.
+wire_dtach_profile() {
+	local profile="$HOME/.profile"
+	touch "$profile"
+
+	awk '
+		$0 == "# >>> claude-dtach >>>" { drop = 1; next }
+		$0 == "# <<< claude-dtach <<<" { drop = 0; next }
+		drop { next }
+		$0 == "DT=$(dt ls)", $0 == "fi" { next }
+		{ print }
+	' "$profile" > "$profile.tmp" && mv "$profile.tmp" "$profile"
+
+	cat >> "$profile" << 'EOF'
+
+# >>> claude-dtach >>>
+# At interactive login, offer to resume a claude-in-dtach session (no-op if none).
+case $- in *i*) [ -x "$HOME/.local/bin/dtach-router" ] && . "$HOME/.local/bin/dtach-router" ;; esac
+# <<< claude-dtach <<<
+EOF
+}
+
 # System packages: Debian/Ubuntu only. Skipped where apt-get is absent (e.g. macOS).
 if command -v apt-get >/dev/null 2>&1; then
 	sudo apt-get update
@@ -196,16 +224,8 @@ cp "$SCRIPT_DIR"/bin/* "$HOME/.local/bin/"
 chmod +x "$HOME"/.local/bin/dt "$HOME"/.local/bin/dtach-router "$HOME"/.local/bin/claude-provider
 
 
-# Append the dtach auto-router to ~/.profile once, so each login resumes sessions.
-if ! grep -q "Aucune session dtach." "$HOME/.profile" 2>/dev/null; then
-	cat >> "$HOME/.profile" << 'EOF'
-
-DT=$(dt ls)
-if [ "$DT" != "Aucune session dtach." ]; then
-	dtach-router
-fi
-EOF
-fi
+# Wire the dtach session-resume menu into ~/.profile (idempotent; migrates any prior block).
+wire_dtach_profile
 
 echo "Done. Restart your shell or run: source ~/.bashrc"
 echo "If you use zsh, switch to bash to enjoy these settings =)"

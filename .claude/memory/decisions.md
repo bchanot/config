@@ -40,3 +40,14 @@ deployed via `sudo install -D -m 0644` to `/etc/profile.d/` from `install_disk_w
 the apt-get Linux block (see LRN-005). Alt rejected: per-user append to `~/.bashrc` — wanted the warn
 for EVERY login account on the box, not just the installing user, so system-wide profile.d won. Known
 limit: login-shell scope only (non-login terminals miss it). Status: done.
+
+## BDR-007 — dtach resume menu wired login-scope via guarded SOURCE in ~/.profile
+2026-06-24. Wired dtach session-resume into `~/.profile` (login scope = once per SSH) as a guarded SOURCE
+`case $- in *i*) [ -x ~/.local/bin/dtach-router ] && . … ;;`, NOT `~/.bashrc` (every interactive shell →
+menu pops on each tab/subshell). Matches "à la connexion SSH" intent. install.sh `wire_dtach_profile()`
+idempotent: awk strips prior block (marker-delimited managed block `# >>> claude-dtach >>>` + legacy
+`DT=$(dt ls)…fi` execute block) then re-appends marker block. cc/d aliases live in bashrc-linux (sourced by
+.profile BEFORE the router runs → available). Alts rejected: (a) source from `.bashrc` (router's own header
+suggests it) — fires too often for login-only intent; (b) keep execute + string-parse — broke the return-based
+guard (LRN-006) + fragile parse. Supersedes the old execute+string-parse block. Status: done in repo; live
+~/.profile re-migrated this session.

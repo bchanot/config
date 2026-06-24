@@ -111,3 +111,11 @@ function set_prompt {
 trap 'timer_start' DEBUG
 PROMPT_COMMAND='set_prompt'
 ## Lancement des commandes au demarrages
+
+# claude-dans-dtach : creer une session (claude tournant dans dtach, detache via Ctrl-\).
+# Usage : cd ~/projets/seo && cc seo   -> session nommee "seo".
+dtach_claude() { dtach -c "$HOME/.dtach/${1:-claude-$(date +%H%M%S)}" -e '^\' claude; }
+alias cc='dtach_claude'
+
+# Rappeler a la demande le menu de reprise (sinon il s'affiche seul au login SSH).
+alias d='source ~/.local/bin/dtach-router'

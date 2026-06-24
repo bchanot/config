@@ -23,7 +23,7 @@ curl -fsSL https://git.bchanot.fr/bchanot/config/raw/branch/master/remote-instal
 | `bash/bashrc-linux`  | bashrc for desktop Linux (git-aware prompt + command timer).   |
 | `bash/bashrc-osx`    | bashrc for macOS.                                              |
 | `bin/dt`             | dtach session manager for claude-in-dtach sessions.            |
-| `bin/dtach-router`   | SSH-login dashboard to resume dtach sessions (sourced from bashrc). |
+| `bin/dtach-router`   | SSH-login dashboard to resume dtach sessions (wired into `~/.profile` by the installer). |
 | `bin/claude-provider`| Switch Claude Code between Anthropic and OpenRouter.           |
 | `etc/profile.d/disk-usage-warning.sh` | Login-time warning (bold red) when `/` or `/home` cross 85% usage. Deployed to `/etc/profile.d/` on Linux. |
 
@@ -57,7 +57,7 @@ What it does:
 5. Copies the tracked vim files into `~/.vim` and symlinks `~/.vimrc`.
 6. Picks the bashrc by OS: macOS → `bashrc-osx` (falls back to `bashrc-linux` if missing), everything else → `bashrc-linux`. Copies it to `~/.bashrc`.
 7. Installs Python CLIs via `pipx` (`PyMuPDF` → `pymupdf`, `Markdown` → `markdown_py`) — skipped if `pipx` is absent.
-8. Copies the `bin/` scripts (`dt`, `dtach-router`, `claude-provider`) into `~/.local/bin`.
+8. Copies the `bin/` scripts (`dt`, `dtach-router`, `claude-provider`) into `~/.local/bin` and wires the dtach session-resume menu into `~/.profile` (idempotent — sourced only at interactive login, and replaces any prior block).
 9. On Linux, installs `etc/profile.d/disk-usage-warning.sh` to `/etc/profile.d/` (needs `sudo`) so each login warns when `/` or `/home` cross 85% usage.
 
 ### Packages installed (apt)
@@ -79,7 +79,7 @@ The script is re-runnable: each run re-backs up to `~/Oldconfig` (overwriting th
 Deployed to `~/.local/bin` (the deployed bashrc adds this dir to `PATH`):
 
 - **`dt`** — manage claude-in-dtach sessions (`dt ls|at|kill`). Needs `dtach` + `fzf`.
-- **`dtach-router`** — source from `~/.bashrc` to get a session dashboard on SSH login. Needs `dt`, `dtach`, `fzf`.
+- **`dtach-router`** — session dashboard on SSH login. The installer wires it into `~/.profile`, where it is **sourced** (not executed) at interactive login and is a silent no-op when no session exists. Create a session with `cc [name]`, re-open the menu anytime with `d` (both aliases from the bashrc). Needs `dt`, `dtach`, `fzf`.
 - **`claude-provider`** — switch Claude Code between Anthropic and OpenRouter.
   OpenRouter mode reads the key from **`$OPENROUTER_API_KEY`** (never hardcoded). Export it from a private, untracked file, e.g. `~/.bashrc.local`:
   ```sh

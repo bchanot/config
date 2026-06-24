@@ -36,3 +36,14 @@ absent on macOS BSD df. Any install step deploying such a snippet system-wide mu
 `command -v apt-get` (Linux) block, never the OS-agnostic path. Deploy idempotently with
 `sudo install -D -m 0644 src /etc/profile.d/x.sh` (-D makes the dir, overwrite = re-runnable). Caveat:
 `/etc/profile.d/*.sh` runs for LOGIN shells only — non-login terminals need `/etc/bash.bashrc` instead.
+
+## LRN-006 — Login-resume scripts must be SOURCED, not executed
+2026-06-24. `dtach-router` (any login script that hands control back via `return` + attaches to host TTY)
+must be SOURCED, never run as a command. Executed: its guard `case $- in *i*) ;; *) return 0 2>/dev/null ;;`
+can't `return` from a non-sourced script → error swallowed by `2>/dev/null` → falls THROUGH the guard →
+runs fzf + `dt at … >/dev/tty` → `/dev/tty: No such device or address` in EVERY non-interactive login shell
+(`bash -lc`, cron, scp, tool sandbox). Repro'd live (fired on each Bash init). Fix in `~/.profile`:
+`case $- in *i*) [ -x router ] && . router ;; esac`. Also: don't re-guard by parsing decorative output
+(`[ "$(dt ls)" != "Aucune session dtach." ]`) — fragile (couples to exact string) AND redundant
+(`dtach-router` already returns on empty `dt --raw`). Let the script self-guard. Bonus gotcha: `~/.profile`
+is NOT read by bash if `~/.bash_profile` or `~/.bash_login` exists.
