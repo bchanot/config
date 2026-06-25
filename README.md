@@ -16,7 +16,7 @@ curl -fsSL https://git.bchanot.fr/bchanot/config/raw/branch/master/remote-instal
 
 | Path                 | Purpose                                                        |
 | -------------------- | -------------------------------------------------------------- |
-| `install.sh`         | Installs apt packages + Docker, backs up old config, deploys vim + bashrc (OS-detected), installs CLI scripts. |
+| `install.sh`         | Installs apt packages + Docker + code-server + RDP (gnome-remote-desktop), backs up old config, deploys vim + bashrc (OS-detected), installs CLI scripts, pipx tools, and a low-disk login warning. |
 | `vim/vimrc`          | Vim config: pathogen, molokai, syntastic (C with `-Wall -Werror -Wextra`), NERDTree, 42-style canonical class generators (`:ClassH`, `:ClassC`). |
 | `vim/autoload/`      | `pathogen.vim` plugin loader (committed).                      |
 | `vim/colors/`        | `molokai.vim` colorscheme (committed).                         |
@@ -59,6 +59,8 @@ What it does:
 7. Installs Python CLIs via `pipx` (`PyMuPDF` → `pymupdf`, `Markdown` → `markdown_py`) — skipped if `pipx` is absent.
 8. Copies the `bin/` scripts (`dt`, `dtach-router`, `claude-provider`) into `~/.local/bin` and wires the dtach session-resume menu into `~/.profile` (idempotent — sourced only at interactive login, and replaces any prior block).
 9. On Linux, installs `etc/profile.d/disk-usage-warning.sh` to `/etc/profile.d/` (needs `sudo`) so each login warns when `/` or `/home` cross 85% usage.
+10. On Linux, installs **code-server** (VS Code in the browser) via its vendor script — skipped if already present — and enables the `code-server@$USER` systemd service.
+11. On Linux, sets up **RDP remote login** via `gnome-remote-desktop` (Wayland-native): installs the daemon + `openssl`, generates a self-signed TLS cert once, and prompts interactively for shared "gate" credentials (skipped when no terminal is attached, or already set). Disables `xrdp` if present; opens UFW port `3389` only when UFW is already active.
 
 ### Packages installed (apt)
 
@@ -68,6 +70,7 @@ What it does:
 - **Runtimes**: `nodejs python3-pip pipx php-cli`
 - **Media / doc CLI**: `ffmpeg weasyprint poppler-utils qpdf webp libavif-bin`
 - **Docker**: `docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin` (via Docker's repo)
+- **Remote access**: `gnome-remote-desktop openssl` (apt) + `code-server` (via its vendor install script, not apt) — RDP remote login + browser VS Code
 - **pipx**: `PyMuPDF` (`pymupdf`), `Markdown` (`markdown_py`)
 
 The script is re-runnable: each run re-backs up to `~/Oldconfig` (overwriting the previous backup), re-clones plugins, skips Docker if already installed, and re-deploys the `bin/` scripts.
@@ -92,8 +95,8 @@ Deployed to `~/.local/bin` (the deployed bashrc adds this dir to `PATH`):
 - Debian/Ubuntu `apt-get` for the package step (optional elsewhere)
 - A `bash` login shell (zsh users: switch to bash for these prompts to apply)
 
-## Lint
+## License
 
-```sh
-shellcheck install.sh bash/bashrc-*
-```
+GPL-3.0-or-later — see [LICENSE](LICENSE).
+
+Copyright (C) 2026 Bastien Chanot.
