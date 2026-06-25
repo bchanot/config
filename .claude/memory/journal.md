@@ -41,3 +41,12 @@ SOURCE `case $- in *i*) ... . dtach-router` via idempotent wire_dtach_profile() 
 marker block, re-appends marker block). Added cc (create) / d (re-summon) aliases to bashrc-linux.
 shellcheck + bash -n CLEAN; migration simulated on real .profile copy. LRN-006 + BDR-007. README synced.
 Not committed; live ~/.profile not yet re-migrated.
+
+## 2026-06-25 — dtach menu: ~/.profile → ~/.bashrc (VS Code non-login fix)
+User: dtach resume menu never fires at session start, even post-install. Root cause: user runs VS Code
+Remote-SSH → its Linux terminals are NON-login → skip ~/.profile (where BDR-007 wired it). Proven by process
+tree (VSCODE_IPC_HOOK_CLI, no sshd/login-bash) + provably-correct ~/.profile wiring + existing session yet zero
+menu. Fix: source dtach-router from bashrc-linux (every interactive shell); install.sh wire_dtach_profile() →
+unwire_dtach_profile() strips stale ~/.profile block (avoids double-prompt on plain SSH). User chose simplest
+(per-tab) over once-per-connection sentinel. shellcheck install.sh CLEAN, bash -n OK, strip proven idempotent
+on .profile copy. BDR-009 (supersedes BDR-007) + LRN-008. Live needs ./install.sh re-run.

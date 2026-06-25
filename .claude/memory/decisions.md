@@ -60,3 +60,16 @@ grant asserted in README per FSF convention, LICENSE holds plain GPLv3 text. Alt
 (permissive — allow CLOSED derivatives, weaker open guarantee); Unlicense (public domain, no copyleft).
 Repo private (CLAUDE.md Public=no) so license optional, but user wanted one set. Reversible: swap LICENSE +
 README line if "full opensource" meant permissive. Status: done in repo (uncommitted).
+
+## BDR-009 — dtach resume menu moved ~/.profile → ~/.bashrc (every interactive shell)
+2026-06-25. Reversed BDR-007. Root cause: user works in VS Code Remote-SSH; its Linux integrated terminals are
+NON-login interactive shells → read `~/.bashrc`, never `~/.profile` → login-scoped wiring (BDR-007) silently
+never fired (LRN-008). Now source dtach-router from `bashrc-linux` via `case $- in *i*) … . dtach-router`;
+fires in EVERY interactive shell (covers VS Code, plain SSH via `~/.profile`→`~/.bashrc`, tmux, new tabs).
+install.sh `wire_dtach_profile()` → `unwire_dtach_profile()`: strips any stale `~/.profile` block (marker +
+legacy) so plain SSH login (sources `~/.bashrc` via `~/.profile`) doesn't prompt twice. Trade-off ACCEPTED
+(user chose "simplest"): menu shows in each new terminal tab when sessions exist, not once-per-connection —
+the exact noise BDR-007 avoided, now tolerated for VS Code reliability. Alts rejected: (a) once-per-connection
+sentinel keyed to `SSH_CONNECTION`/`VSCODE_IPC_HOOK_CLI` in `$XDG_RUNTIME_DIR` — more code, user declined;
+(b) VS Code `terminal.integrated` `args:["-l"]` — not carried by dotfiles, same per-tab firing. Supersedes
+BDR-007. Status: done in repo; live needs `./install.sh` re-run.

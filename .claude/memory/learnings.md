@@ -56,3 +56,14 @@ returned EMPTY while code-server + RDP stayed undocumented. A partial doc commit
 hides earlier feature drift. Fix: drift-detect against FEATURE commits (scan `git log` for feat/* touching
 source since the doc's last SUBSTANTIVE edit, OR cross-ref each entry-point / install-step in code vs doc
 text) — never trust doc timestamp alone. Surfaced by /doc clean this session.
+
+## LRN-008 — VS Code Remote-SSH terminals are non-login → skip ~/.profile
+2026-06-25. VS Code Remote-SSH (Linux) integrated terminals = NON-login interactive bash → source `~/.bashrc`,
+NEVER `~/.profile`. Any login-scoped startup wiring (`~/.profile`, `~/.bash_profile`) silently never runs there.
+Diagnose via process tree: `VSCODE_IPC_HOOK_CLI` env + `.vscode-server/.../remote-cli` in PATH, no `sshd` /
+no `bash -l` ancestry (the launching shell reparents to systemd); confirm with `shopt -q login_shell`. For
+"run once at session start" that must work under VS Code, hook `~/.bashrc` (universal: sourced by login shells
+via `~/.profile` AND directly by non-login interactive shells), NOT `~/.profile`. Extends/corrects LRN-006
+(its `~/.profile` fix is valid only for real login shells, not IDE remotes). Deductive tell that pinned it:
+wiring proven correct + target resource (session) proven present, yet menu never fires at startup → the startup
+file is not being sourced → non-login shell. See BDR-009.
