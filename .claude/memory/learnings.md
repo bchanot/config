@@ -47,3 +47,12 @@ runs fzf + `dt at … >/dev/tty` → `/dev/tty: No such device or address` in EV
 (`[ "$(dt ls)" != "Aucune session dtach." ]`) — fragile (couples to exact string) AND redundant
 (`dtach-router` already returns on empty `dt --raw`). Let the script self-guard. Bonus gotcha: `~/.profile`
 is NOT read by bash if `~/.bash_profile` or `~/.bash_login` exists.
+
+## LRN-007 — Doc-drift by file mtime misses partial doc updates
+2026-06-25. `git log -1 --format=%aI -- README.md` reports "fresh" → false negative for staleness.
+README touched in 46512ee (`docs(readme): fix wkhtmltopdf→weasyprint`, PACKAGE LIST ONLY) AFTER feature
+commit 0bd936b (`gnome-remote-desktop + code-server`), so the mtime-based "commits since doc edit" scan
+returned EMPTY while code-server + RDP stayed undocumented. A partial doc commit resets the clock and
+hides earlier feature drift. Fix: drift-detect against FEATURE commits (scan `git log` for feat/* touching
+source since the doc's last SUBSTANTIVE edit, OR cross-ref each entry-point / install-step in code vs doc
+text) — never trust doc timestamp alone. Surfaced by /doc clean this session.

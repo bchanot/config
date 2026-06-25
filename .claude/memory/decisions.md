@@ -51,3 +51,12 @@ idempotent: awk strips prior block (marker-delimited managed block `# >>> claude
 suggests it) — fires too often for login-only intent; (b) keep execute + string-parse — broke the return-based
 guard (LRN-006) + fragile parse. Supersedes the old execute+string-parse block. Status: done in repo; live
 ~/.profile re-migrated this session.
+
+## BDR-008 — config repo licensed GPL-3.0-or-later (copyleft)
+2026-06-25. Added LICENSE (verbatim GPLv3 copied from `/usr/share/common-licenses/GPL-3`) + README
+`## License` (`GPL-3.0-or-later — see LICENSE`, © 2026 Bastien Chanot). User said "full opensource" → read
+as strong COPYLEFT (code + all derivatives stay open), not permissive. SPDX: GPL-3.0-or-later; "or-later"
+grant asserted in README per FSF convention, LICENSE holds plain GPLv3 text. Alts rejected: MIT / Apache-2.0
+(permissive — allow CLOSED derivatives, weaker open guarantee); Unlicense (public domain, no copyleft).
+Repo private (CLAUDE.md Public=no) so license optional, but user wanted one set. Reversible: swap LICENSE +
+README line if "full opensource" meant permissive. Status: done in repo (uncommitted).
