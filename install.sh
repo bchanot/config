@@ -113,16 +113,16 @@ install_disk_warning() {
 		/etc/profile.d/disk-usage-warning.sh
 }
 
-# Wire the dtach session-resume menu into ~/.profile. At interactive login we SOURCE
-# dtach-router rather than execute it: the script hands control back with `return` and
-# attaches to the host TTY, so running it as a command makes its interactivity guard
-# fail and errors on /dev/tty whenever the login shell is non-interactive (bash -lc,
-# cron, scp). Sourced, the guard works and it is a silent no-op when no session exists.
-# Idempotent: strips any prior block first — the marker-delimited managed one AND the
-# legacy execute-based one (DT=$(dt ls) ... fi) from earlier installs. User scope, no sudo.
-wire_dtach_profile() {
+# The dtach session-resume menu now ships in ~/.bashrc (deployed above): every interactive
+# shell sources it, including VS Code Remote-SSH terminals, which are non-login and therefore
+# never read ~/.profile. This strips any dtach block a previous install left in ~/.profile —
+# the marker-delimited managed one AND the legacy execute-based one (DT=$(dt ls) ... fi) — so
+# the menu does not also fire from there (a plain SSH login sources ~/.bashrc via ~/.profile,
+# which would otherwise prompt twice). No-op when absent. User scope, no sudo.
+unwire_dtach_profile() {
 	local profile="$HOME/.profile"
-	touch "$profile"
+	[ -f "$profile" ] || return 0
+	grep -qF 'dtach-router' "$profile" || return 0
 
 	awk '
 		$0 == "# >>> claude-dtach >>>" { drop = 1; next }
@@ -131,14 +131,6 @@ wire_dtach_profile() {
 		$0 == "DT=$(dt ls)", $0 == "fi" { next }
 		{ print }
 	' "$profile" > "$profile.tmp" && mv "$profile.tmp" "$profile"
-
-	cat >> "$profile" << 'EOF'
-
-# >>> claude-dtach >>>
-# At interactive login, offer to resume a claude-in-dtach session (no-op if none).
-case $- in *i*) [ -x "$HOME/.local/bin/dtach-router" ] && . "$HOME/.local/bin/dtach-router" ;; esac
-# <<< claude-dtach <<<
-EOF
 }
 
 # System packages: Debian/Ubuntu only. Skipped where apt-get is absent (e.g. macOS).
@@ -224,8 +216,8 @@ cp "$SCRIPT_DIR"/bin/* "$HOME/.local/bin/"
 chmod +x "$HOME"/.local/bin/dt "$HOME"/.local/bin/dtach-router "$HOME"/.local/bin/claude-provider
 
 
-# Wire the dtach session-resume menu into ~/.profile (idempotent; migrates any prior block).
-wire_dtach_profile
+# Remove any stale dtach wiring from ~/.profile (the menu now ships in ~/.bashrc; see above).
+unwire_dtach_profile
 
 echo "Done. Restart your shell or run: source ~/.bashrc"
 echo "If you use zsh, switch to bash to enjoy these settings =)"

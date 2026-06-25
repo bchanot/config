@@ -117,5 +117,10 @@ PROMPT_COMMAND='set_prompt'
 dtach_claude() { dtach -c "$HOME/.dtach/${1:-claude-$(date +%H%M%S)}" -e '^\' claude; }
 alias cc='dtach_claude'
 
-# Rappeler a la demande le menu de reprise (sinon il s'affiche seul au login SSH).
+# Rappeler a la demande le menu de reprise.
 alias d='source ~/.local/bin/dtach-router'
+
+# Au demarrage d'un shell interactif, proposer de reprendre une session dtach existante
+# (silencieux si aucune). Place ici plutot que dans ~/.profile car les terminaux VS Code
+# Remote-SSH sont non-login et ne lisent pas ~/.profile ; ~/.bashrc, lui, est toujours lu.
+case $- in *i*) [ -x "$HOME/.local/bin/dtach-router" ] && . "$HOME/.local/bin/dtach-router" ;; esac
