@@ -15,3 +15,21 @@ Oldconfig/
 
 # Claude local settings (machine-specific)
 .claude/settings.local.json
+
+# ── gitflow standard socle (added by gitflow_init; additive, safe to edit) ──
+.env
+.env.*
+!.env.example
+.vscode/
+.idea/
+*.log
+.claude/*
+!.claude/memory/
+!.claude/tasks/
+!.claude/audits/
+!.claude/settings.json
+!.claude/deploy/
+.claude/agent-memory/
+.claude/gstack/
+.claude/deploy/PENDING.json
+.claude/deploy/NEXT.sh
