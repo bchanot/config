@@ -21,7 +21,7 @@ resource-DB tool, no such systemd service). Returns non-zero → under `set -euo
 whole installer. Also `apt-get install xrdp` missing `-y` → hangs non-interactive run. Root cause:
 one-letter typo `xrdp`→`xrdb` + missing -y. Fix: idempotent `install_xrdp()` (apt -y, adduser xrdp
 ssl-cert, polkit .rules, conditional ufw 3389, enable+restart). shellcheck + bash -n CLEAN.
-Status: resolved in repo. Not run live / RDP connection not tested.
+Status: SUPERSEDED by BLK-004 (xrdp dropped for gnome-remote-desktop) — was resolved in repo, never run live.
 
 ## BLK-004 — RDP Win→Linux 0x904/0x7: empty gate creds on g-r-d --system — RESOLVED
 2026-06-23. After xrdp dropped for gnome-remote-desktop (Wayland), mstsc fails `0x904 / 0x7`

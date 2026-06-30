@@ -13,15 +13,15 @@
 
 ## P2 — Moyenne
 - [ ] [P2] [/hotfix] — vim/vimrc GenerateClassC: bare `name` → `a:name` (fixes :ClassC E121)
-      Files: vim/vimrc (~line 75-95)
+      Files: vim/vimrc (GenerateClassC, ~line 80-104)
       Source: .claude/memory/blockers.md BLK-001
 
 ## P3 — Basse
 - [ ] [P3] [/code-clean] — bashrc-* legacy backticks → $(...) (SC2006), arithmetic SC2004
-      Files: bash/bashrc-linux, bash/bashrc-server, bash/bashrc-osx
+      Files: bash/bashrc-linux, bash/bashrc-osx
       Note: cosmetic only, no behavior change
 
 ## Post-MVP (optional, backlog)
 - [ ] Runtime-test install.sh on a clean VM (all 4 targets) — not safe on dev machine
 - [ ] Consider an `uninstall.sh` (restore from ~/Oldconfig)
-- [ ] LICENSE if repo ever goes public
+- [x] LICENSE if repo ever goes public — done (GPL-3.0, BDR-008, 40c6524)

@@ -49,7 +49,7 @@ idempotent: awk strips prior block (marker-delimited managed block `# >>> claude
 `DT=$(dt ls)…fi` execute block) then re-appends marker block. cc/d aliases live in bashrc-linux (sourced by
 .profile BEFORE the router runs → available). Alts rejected: (a) source from `.bashrc` (router's own header
 suggests it) — fires too often for login-only intent; (b) keep execute + string-parse — broke the return-based
-guard (LRN-006) + fragile parse. Supersedes the old execute+string-parse block. Status: done in repo; live
+guard (LRN-006) + fragile parse. Supersedes the old execute+string-parse block. Status: SUPERSEDED by BDR-009 — done in repo; live
 ~/.profile re-migrated this session.
 
 ## BDR-008 — config repo licensed GPL-3.0-or-later (copyleft)
@@ -59,7 +59,7 @@ as strong COPYLEFT (code + all derivatives stay open), not permissive. SPDX: GPL
 grant asserted in README per FSF convention, LICENSE holds plain GPLv3 text. Alts rejected: MIT / Apache-2.0
 (permissive — allow CLOSED derivatives, weaker open guarantee); Unlicense (public domain, no copyleft).
 Repo private (CLAUDE.md Public=no) so license optional, but user wanted one set. Reversible: swap LICENSE +
-README line if "full opensource" meant permissive. Status: done in repo (uncommitted).
+README line if "full opensource" meant permissive. Status: done in repo (committed: LICENSE 40c6524, README License 00d88f7).
 
 ## BDR-009 — dtach resume menu moved ~/.profile → ~/.bashrc (every interactive shell)
 2026-06-25. Reversed BDR-007. Root cause: user works in VS Code Remote-SSH; its Linux integrated terminals are
