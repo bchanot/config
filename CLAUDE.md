@@ -10,7 +10,7 @@ Produces vim + bash configuration deployed by `install.sh`. Private/personal aud
 - Public: no
 - Database: none
 - Stack: POSIX/bash shell scripts + vimscript
-- Distribution: `git clone` + `./install.sh <target>`
+- Distribution: `git clone` + `./install.sh` (OS auto-detected)
 
 ## Layout
 
