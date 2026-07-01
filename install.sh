@@ -145,7 +145,7 @@ if command -v apt-get >/dev/null 2>&1; then
 		unzip tree tmux fzf dtach net-tools \
 		openssh-server cifs-utils lftp ftp \
 		nodejs python3-pip pipx php-cli \
-		ffmpeg weasyprint poppler-utils qpdf webp libavif-bin
+		ffmpeg weasyprint poppler-utils qpdf webp libavif-bin gh
 
 	# Docker (separate repo).
 	install_docker
