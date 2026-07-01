@@ -18,7 +18,7 @@ files already cover before adding external fetch.
 (else recurring "Authentication required to create a color managed device" popups). Polkit format
 version-gated: v>=0.106 → `/etc/polkit-1/rules.d/*.rules` (JS); older → `.pkla`. Verified live polkit
 127 → `.rules` only (`.pkla` backend dropped). Open RDP 3389 only if firewall active. Restart xrdp
-after group add so daemon reloads ssl-cert membership.
+after group add so daemon reloads ssl-cert membership. SUPERSEDED by LRN-004 for Wayland-only GNOME (xrdp recipe N/A there).
 
 ## LRN-004 — gnome-remote-desktop --system: remote desktop on Wayland-only GNOME
 2026-06-23. xrdp does NOT work on Wayland-only GNOME (Shell asserts XDG_SESSION_TYPE=wayland, Xorg
