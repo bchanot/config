@@ -41,3 +41,12 @@ Root cause: /tmp is tmpfs (50% RAM) → agents fill it → RAM halved + ENOSPC b
 - [x] README.md steps 12-14 + table rows; CLAUDE.md layout
 - [x] shellcheck + bash -n (install.sh, cloudpex/install.sh); stub-sudo dry run of the offers
 - [x] commit on feature branch (no gitea-deploy/, no .githooks changes)
+
+## Round 2 — cloudpex config out of script, reconcile main/develop, capitalize, merge (2026-09-22)
+- [x] cloudpex/cloudpex: constants → /etc/cloudpex.conf parsed line by line (never sourced), die if missing
+- [x] cloudpex/install.sh: prompt host/share/user/mnt/vers (regex-validated), keep-existing [Y/n], no-TTY skip
+- [x] cloudpex/README.md + README.md + CLAUDE.md: no site values, describe prompts + conf file
+- [x] registries: BDR-010/011/012, LRN-009/010/011, BLK-005/006, EVAL-002, journal
+- [ ] reconcile: merge main (a210d01 dtach) into develop via lib helper
+- [ ] gitflow finish feature → develop (explicit user signal: "puis merge")
+- [ ] runbook for live apply on this machine

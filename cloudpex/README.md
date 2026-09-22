@@ -1,9 +1,13 @@
-# cloudpex : montage à la demande du partage SMB CloudPex
+# cloudpex : montage à la demande d'un partage SMB (NAS)
 
-`cloudpex` monte et démonte le partage SMB `CloudPex` du NAS (`//192.168.1.111/CloudPex`)
-sur `/mnt/cloudpex`. Le mot de passe SMB est demandé à chaque montage. Rien n'est
-écrit sur disque, rien ne passe en argument (le mot de passe est transmis à
-`mount.cifs` par la variable d'environnement `PASSWD`, invisible dans `ps`).
+`cloudpex` monte et démonte un partage SMB du NAS sur un point de montage local.
+Le mot de passe SMB est demandé à chaque montage. Rien n'est écrit sur disque,
+rien ne passe en argument (le mot de passe est transmis à `mount.cifs` par la
+variable d'environnement `PASSWD`, invisible dans `ps`).
+
+Les valeurs propres au site (hôte du NAS, nom du partage, utilisateur SMB, point
+de montage, version SMB) ne sont pas dans le script. Elles sont demandées à
+l'installation et écrites dans `/etc/cloudpex.conf`, lisible par root seulement.
 
 ## Pourquoi à la demande, et pas dans fstab
 
@@ -26,7 +30,7 @@ tes propres processus.
 ## Usage
 
 ```sh
-cloudpex        # monte (demande le mot de passe de bchanot_smb)
+cloudpex        # monte (demande le mot de passe SMB)
 cloudpex -s     # état
 cloudpex -u     # démonte (alias : -d, dc, disconnect, disable)
 cloudpex -h     # aide
@@ -45,19 +49,36 @@ Ce que ça fait, à l'identique de cette machine :
 | Cible | Détail |
 | --- | --- |
 | `/usr/local/bin/cloudpex` | copie du script, `root:root`, `0755` |
-| `/mnt/cloudpex` | point de montage, créé vide |
+| `/etc/cloudpex.conf` | les cinq valeurs du site, demandées au clavier, `root:root`, `0600` |
+| point de montage | créé vide (`/mnt/cloudpex` par défaut) |
 | `cifs-utils` | installé via `apt-get` seulement si `mount.cifs` manque |
 
-Réexécutable. `../install.sh` l'appelle sur Linux, donc une installation complète
-du dépôt suffit. Rien n'est monté à l'installation.
+Questions posées (défaut entre crochets) :
 
-## Paramètres
+```
+Hôte du NAS (IP ou nom) :
+Nom du partage SMB :
+Utilisateur SMB :
+Point de montage [/mnt/cloudpex] :
+Version SMB [3.0] :
+```
 
-En tête de `cloudpex` : `SHARE`, `MNT`, `SMB_USER`, `SMB_VERS`. Pour changer de NAS
-ou de compte, édite ces valeurs puis relance `./cloudpex/install.sh`.
+Réexécutable : si `/etc/cloudpex.conf` existe, il est affiché et gardé sauf
+réponse `n`. Sans terminal (`curl | bash`), le script est réinstallé mais la
+config n'est ni créée ni modifiée. `../install.sh` appelle cet installeur sur
+Linux. Rien n'est monté à l'installation.
+
+## Changer de NAS, de partage ou de compte
+
+Relance `./cloudpex/install.sh` et réponds `n` à « La garder ? », ou édite
+`/etc/cloudpex.conf` en root (format `CLÉ=valeur`, une par ligne : `HOST`,
+`SHARE`, `SMB_USER`, `MNT`, `SMB_VERS`). Le script lit ce fichier ligne à ligne,
+il ne l'exécute jamais.
 
 ## Dépannage
 
+- `config absente` : lance `./cloudpex/install.sh` depuis un terminal.
 - Échec du montage : `dmesg | tail` (mot de passe, réseau, ou version SMB
-  refusée par le NAS : essayer `SMB_VERS="3.1.1"`).
-- Démontage refusé (fichiers ouverts) : `lsof +D /mnt/cloudpex`, fermer, réessayer.
+  refusée par le NAS : essayer `SMB_VERS=3.1.1` dans la config).
+- Démontage refusé (fichiers ouverts) : `lsof +D <point de montage>`, fermer,
+  réessayer.

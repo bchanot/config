@@ -26,7 +26,8 @@ etc/profile.d/disk-usage-warning.sh     login-time low-disk warning → /etc/pro
 etc/tmpfiles.d/tmp.conf                 disk-backed /tmp cleanup rules (offer: /tmp on disk)
 etc/systemd/ssh.service.d/override.conf sshd OOM-exempt drop-in (offer: SSH memory guard)
 etc/default/earlyoom                    earlyoom args, spare sshd / kill node first (same offer)
-cloudpex/{cloudpex,install.sh,README.md} on-demand CloudPex SMB mount helper → /usr/local/bin (FR docs)
+cloudpex/{cloudpex,install.sh,README.md} on-demand SMB mount helper → /usr/local/bin; site values
+                                         prompted at install → /etc/cloudpex.conf, never in the script (FR docs)
 .claude/{tasks,memory,audits}/   Claude working state
 ```
 

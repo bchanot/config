@@ -1,18 +1,16 @@
 #!/usr/bin/env bash
-# cloudpex-mount — monte / démonte le partage SMB CloudPex du NAS
-# Usage : cloudpex-mount        -> monte (demande le mot de passe)
-#         cloudpex-mount -u     -> démonte
-#         cloudpex-mount -s     -> état
+# cloudpex — monte / démonte le partage SMB du NAS déclaré dans /etc/cloudpex.conf
+# Usage : cloudpex        -> monte (demande le mot de passe)
+#         cloudpex -u     -> démonte
+#         cloudpex -s     -> état
 # Aucun credential n'est écrit sur disque ni passé en argument (invisible dans ps).
 
 set -euo pipefail
 
-SHARE="//192.168.1.111/CloudPex"
-MNT="/mnt/cloudpex"
-SMB_USER="bchanot_smb"
-SMB_VERS="3.0"
+CONF="/etc/cloudpex.conf"
 
-# Re-lance le script en root si nécessaire (avant toute saisie du mot de passe)
+# Re-lance le script en root si nécessaire (avant toute saisie du mot de passe,
+# et avant de lire la config, lisible par root seulement)
 if [[ $EUID -ne 0 ]]; then
     exec sudo -- "$0" "$@"
 fi
@@ -22,6 +20,22 @@ OWNER_UID="${SUDO_UID:-1000}"
 OWNER_GID="${SUDO_GID:-1000}"
 
 die() { echo "Erreur : $*" >&2; exit 1; }
+
+# Valeurs propres au site (hôte, partage, utilisateur, point de montage, version),
+# écrites par cloudpex/install.sh au format CLÉ=valeur. Lues ligne à ligne,
+# jamais sourcées : le fichier de config n'exécute rien.
+conf_get() { sed -n "s/^$1=//p" "$CONF" | head -n 1; }
+
+[[ -r $CONF ]] || die "config absente : $CONF (lance cloudpex/install.sh)"
+HOST="$(conf_get HOST)"
+SHARE_NAME="$(conf_get SHARE)"
+SMB_USER="$(conf_get SMB_USER)"
+MNT="$(conf_get MNT)"
+SMB_VERS="$(conf_get SMB_VERS)"
+[[ -n $HOST && -n $SHARE_NAME && -n $SMB_USER && -n $MNT && -n $SMB_VERS ]] \
+    || die "config incomplète : $CONF (relance cloudpex/install.sh)"
+[[ $MNT == /* ]] || die "MNT doit être un chemin absolu ($CONF)"
+SHARE="//${HOST}/${SHARE_NAME}"
 
 is_mounted() { mountpoint -q "$MNT"; }
 
