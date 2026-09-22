@@ -64,3 +64,7 @@ upgrades file, sshd limits drop-in sshd -t gated) on feature/security-baseline (
 banned 22 not 337). auditd + ufw declined. shellcheck/bash -n CLEAN, stub harness incl. sshd -t reject path,
 configparser + apt-config checks. Branch pushed, NOT finished (no merge signal). Live apply = user runbook.
 Update: user said merge → feature/security-baseline finished via lib, develop a6c416e pushed.
+Cleanup: user asked all-in-develop + delete branches. Hooks refresh committed (a42e8f6). All 3 remote feature
+branches verified merged; `git push --delete` DENIED by permission layer → user runs it. gitea-deploy/ (untracked
+Gitea server deploy project, 31 files, no secrets) moved to ~/Documents/gitea-deploy, own repo via gitflow init,
+pushed main+develop to git.bchanot.fr (push-to-create worked). deploy.conf gitignored.
