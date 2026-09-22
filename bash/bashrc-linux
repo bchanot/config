@@ -114,7 +114,13 @@ PROMPT_COMMAND='set_prompt'
 
 # claude-dans-dtach : creer une session (claude tournant dans dtach, detache via Ctrl-\).
 # Usage : cd ~/projets/seo && cc seo   -> session nommee "seo".
-dtach_claude() { dtach -c "$HOME/.dtach/${1:-claude-$(date +%H%M%S)}" -e '^\' claude; }
+dtach_claude() {
+  local name="${1:-claude-$(date +%H%M%S)}"
+  systemd-run --user --quiet --collect --scope --slice=dev.slice \
+    --unit="cc-${name}" \
+    dtach -c "$HOME/.dtach/${name}" -e '^\' \
+      bash -c 'set -a; [ -f "$HOME/.claude/.env" ] && . "$HOME/.claude/.env"; set +a; exec claude'
+}
 alias cc='dtach_claude'
 
 # Rappeler a la demande le menu de reprise.
