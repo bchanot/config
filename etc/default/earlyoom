@@ -1,0 +1,8 @@
+# earlyoom settings, sourced by earlyoom.service (rules of the previous server).
+# -r 60     memory report in the journal every minute
+# -m 10     act when available RAM drops under 10% ...
+# -s 10     ... and free swap under 10% (both conditions)
+# --avoid   never kill sshd, systemd, logind, dbus, containerd
+# --prefer  kill the agent runtimes first: java, node, pnpm, esbuild
+# Quotes inside the value are honoured by systemd's $VAR word splitting.
+EARLYOOM_ARGS="-r 60 -m 10 -s 10 --avoid '^(sshd|systemd|systemd-logind|dbus-daemon|containerd)$' --prefer '^(java|node|pnpm|esbuild)$'"

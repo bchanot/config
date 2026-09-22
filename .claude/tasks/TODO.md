@@ -25,3 +25,19 @@
 - [ ] Runtime-test install.sh on a clean VM (all 4 targets) — not safe on dev machine
 - [ ] Consider an `uninstall.sh` (restore from ~/Oldconfig)
 - [x] LICENSE if repo ever goes public — done (GPL-3.0, BDR-008, 40c6524)
+
+## Feature — /tmp on disk + SSH OOM guard + cloudpex installer (2026-09-22)
+Branch: feature/tmp-disk-ssh-oom-cloudpex (off develop). Design approved in chat (bounded).
+Root cause: /tmp is tmpfs (50% RAM) → agents fill it → RAM halved + ENOSPC breaks shells. Swap rejected.
+- [x] etc/tmpfiles.d/tmp.conf (D /tmp 10d + q /var/tmp 30d — keep both upstream lines)
+- [x] etc/systemd/ssh.service.d/override.conf (MemoryMin=256M, OOMScoreAdjust=-1000 — old server)
+- [x] etc/default/earlyoom (old server args: -r 60 -m 10 -s 10 --avoid sshd… --prefer node…)
+- [x] install.sh: confirm() TTY-guarded prompt helper
+- [x] install.sh: offer_tmp_on_disk() — mask tmp.mount + tmpfiles rule, reboot notice, idempotent
+- [x] install.sh: offer_ssh_memory_guard() — drop-in + daemon-reload/restart ssh + earlyoom, idempotent
+- [x] install.sh: install_cloudpex() in Linux block; offers at end of script (Linux-gated)
+- [x] cloudpex/install.sh — /usr/local/bin/cloudpex root 0755, /mnt/cloudpex, cifs-utils if missing
+- [x] cloudpex/README.md (FR) — purpose, why on-demand not fstab, usage, install
+- [x] README.md steps 12-14 + table rows; CLAUDE.md layout
+- [x] shellcheck + bash -n (install.sh, cloudpex/install.sh); stub-sudo dry run of the offers
+- [x] commit on feature branch (no gitea-deploy/, no .githooks changes)

@@ -133,6 +133,87 @@ unwire_dtach_profile() {
 	' "$profile" > "$profile.tmp" && mv "$profile.tmp" "$profile"
 }
 
+# NAS helper: deploys the on-demand CloudPex SMB mount command to /usr/local/bin
+# (see cloudpex/README.md). Nothing is mounted and no credential is stored.
+# Linux-only (cifs-utils); the helper's own installer is idempotent.
+install_cloudpex() {
+	echo "Installing the cloudpex mount helper"
+	bash "$SCRIPT_DIR/cloudpex/install.sh"
+}
+
+# Yes/no prompt for the optional system changes offered at the end of the install.
+# Declines (returns 1) when no terminal is attached (curl | bash), so an offer is
+# skipped with a hint instead of blocking; re-run ./install.sh from a terminal to
+# get it offered again.
+confirm() {
+	local answer=""
+	if [ ! -t 0 ]; then
+		echo "Skipped (no terminal attached): $1" >&2
+		return 1
+	fi
+	read -rp "$1 [y/N] " answer || true
+	case "$answer" in
+		[yY]|[yY][eE][sS]) return 0 ;;
+		*) return 1 ;;
+	esac
+}
+
+# /tmp on disk instead of the tmpfs Ubuntu mounts by default (RAM-backed, capped at
+# 50% of RAM). Agent runs fill it: that eats half the RAM and, once the cap is hit,
+# every temp-file creation fails with ENOSPC — which is what breaks shells. Masking
+# tmp.mount leaves /tmp on the root filesystem; the tmpfiles rule keeps the tmpfs
+# semantics (wiped at boot, entries older than 10 days purged). Takes effect at the
+# next reboot: a busy /tmp is never unmounted live. Idempotent.
+offer_tmp_on_disk() {
+	if [ "$(systemctl is-enabled tmp.mount 2>/dev/null)" = "masked" ]; then
+		echo "/tmp already on disk (tmp.mount masked) — skipping"
+		return 0
+	fi
+	if [ "$(findmnt -n -o FSTYPE -T /tmp)" != "tmpfs" ]; then
+		echo "/tmp is not a tmpfs — nothing to do"
+		return 0
+	fi
+	confirm "Move /tmp from RAM (tmpfs) to disk? Agents fill it and break shells" || return 0
+	sudo systemctl mask tmp.mount
+	sudo install -D -m 0644 "$SCRIPT_DIR/etc/tmpfiles.d/tmp.conf" /etc/tmpfiles.d/tmp.conf
+	echo "/tmp moves to disk at the next reboot."
+}
+
+# Keep SSH reachable when RAM runs out — the two rules the previous server ran:
+#  - ssh.service drop-in: OOMScoreAdjust=-1000 (the kernel OOM killer never picks
+#    sshd) + MemoryMin=256M (reclaim protection for the daemon's cgroup);
+#  - earlyoom: kills the single largest process (node preferred, sshd/systemd spared)
+#    once free RAM and free swap both drop under 10%, before the box thrashes.
+# MemoryMin covers sshd only: logind puts login sessions in user.slice, so nothing can
+# reserve RAM for a future shell — earlyoom acting in time is the real protection.
+# Idempotent: each piece is skipped when already in place. Restarting ssh keeps the
+# current sessions alive (KillMode=process).
+offer_ssh_memory_guard() {
+	local dropin="/etc/systemd/system/ssh.service.d/override.conf"
+	local ssh_done=0 oom_done=0
+	cmp -s "$SCRIPT_DIR/etc/systemd/ssh.service.d/override.conf" "$dropin" && ssh_done=1
+	if cmp -s "$SCRIPT_DIR/etc/default/earlyoom" /etc/default/earlyoom \
+		&& [ "$(systemctl is-enabled earlyoom 2>/dev/null)" = "enabled" ]; then
+		oom_done=1
+	fi
+	if [ "$ssh_done" = 1 ] && [ "$oom_done" = 1 ]; then
+		echo "SSH memory guard already in place — skipping"
+		return 0
+	fi
+	confirm "Protect SSH under memory pressure (sshd OOM-exempt + earlyoom)?" || return 0
+	if [ "$ssh_done" = 0 ]; then
+		sudo install -D -m 0644 "$SCRIPT_DIR/etc/systemd/ssh.service.d/override.conf" "$dropin"
+		sudo systemctl daemon-reload
+		sudo systemctl restart ssh
+	fi
+	if [ "$oom_done" = 0 ]; then
+		sudo apt-get install -y earlyoom
+		sudo install -m 0644 "$SCRIPT_DIR/etc/default/earlyoom" /etc/default/earlyoom
+		sudo systemctl enable earlyoom
+		sudo systemctl restart earlyoom
+	fi
+}
+
 # System packages: Debian/Ubuntu only. Skipped where apt-get is absent (e.g. macOS).
 if command -v apt-get >/dev/null 2>&1; then
 	sudo apt-get update
@@ -161,6 +242,9 @@ if command -v apt-get >/dev/null 2>&1; then
 
 	# Low-disk login warning (system-wide profile.d snippet).
 	install_disk_warning
+
+	# On-demand NAS mount helper (cloudpex/).
+	install_cloudpex
 else
 	echo "apt-get not found — skipping system packages (install vim/git manually)."
 fi
@@ -218,6 +302,13 @@ chmod +x "$HOME"/.local/bin/dt "$HOME"/.local/bin/dtach-router "$HOME"/.local/bi
 
 # Remove any stale dtach wiring from ~/.profile (the menu now ships in ~/.bashrc; see above).
 unwire_dtach_profile
+
+# Optional system changes, offered last so the base install is complete even when
+# declined. Linux/systemd only. Each prompts [y/N] on a terminal, is skipped otherwise.
+if command -v apt-get >/dev/null 2>&1; then
+	offer_tmp_on_disk
+	offer_ssh_memory_guard
+fi
 
 echo "Done. Restart your shell or run: source ~/.bashrc"
 echo "If you use zsh, switch to bash to enjoy these settings =)"
