@@ -50,3 +50,13 @@ Root cause: /tmp is tmpfs (50% RAM) → agents fill it → RAM halved + ENOSPC b
 - [x] reconcile: merge main (a210d01 dtach) into develop via lib helper
 - [x] gitflow finish feature → develop (explicit user signal: "puis merge")
 - [x] runbook for live apply on this machine
+
+## Feature — security baseline in install.sh (2026-09-22)
+Branch: feature/security-baseline (off develop). Scope approved: fail2ban, unattended-upgrades, sshd hardening. auditd + ufw declined.
+- [x] etc/fail2ban/jail.d/local.conf — sshd jail, backend systemd, allports ban, RFC1918 ignoreip
+- [x] etc/apt/apt.conf.d/20auto-upgrades — Periodic Update-Package-Lists + Unattended-Upgrade = 1
+- [x] etc/ssh/sshd_config.d/20-hardening.conf — PermitRootLogin no, MaxAuthTries 3, LoginGraceTime 20
+- [x] install.sh: install_fail2ban / install_unattended_upgrades / harden_sshd (sshd -t gated), called in Linux block
+- [x] README.md (table, step 13, packages) + CLAUDE.md layout
+- [x] shellcheck + bash -n; stub harness harden_sshd (accept / reject paths); configparser check of jail file
+- [x] commit; registries (BDR-013, LRN-012); runbook. No finish without explicit signal.

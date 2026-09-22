@@ -1,0 +1,4 @@
+// Automatic security updates, deployed by install.sh. Same content as
+// `dpkg-reconfigure -plow unattended-upgrades` writes, without the prompt.
+APT::Periodic::Update-Package-Lists "1";
+APT::Periodic::Unattended-Upgrade "1";

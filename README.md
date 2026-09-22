@@ -21,6 +21,9 @@ curl -fsSL https://git.bchanot.fr/bchanot/config/raw/branch/master/remote-instal
 | `etc/tmpfiles.d/tmp.conf` | Cleanup rules for a disk-backed `/tmp` (wiped at boot, 10-day purge). Deployed by the `/tmp` on disk offer. |
 | `etc/systemd/ssh.service.d/override.conf` | `ssh.service` drop-in: sshd exempt from the OOM killer + memory reclaim protection. Deployed by the SSH memory guard offer. |
 | `etc/default/earlyoom` | earlyoom arguments: spare sshd/systemd, kill node/java first. Deployed by the SSH memory guard offer. |
+| `etc/fail2ban/jail.d/local.conf` | fail2ban sshd jail: journal backend, all-ports ban, 5 tries / 10 min / 1 h, private LAN never banned. Deployed on every Linux install. |
+| `etc/apt/apt.conf.d/20auto-upgrades` | Enables unattended security upgrades (what `dpkg-reconfigure` writes). Deployed on every Linux install. |
+| `etc/ssh/sshd_config.d/20-hardening.conf` | sshd limits that cannot lock you out: `PermitRootLogin no`, `MaxAuthTries 3`, `LoginGraceTime 20`. Deployed on every Linux install after `sshd -t`. |
 | `vim/vimrc`          | Vim config: pathogen, molokai, syntastic (C with `-Wall -Werror -Wextra`), NERDTree, 42-style canonical class generators (`:ClassH`, `:ClassC`). |
 | `vim/autoload/`      | `pathogen.vim` plugin loader (committed).                      |
 | `vim/colors/`        | `molokai.vim` colorscheme (committed).                         |
@@ -66,8 +69,9 @@ What it does:
 10. On Linux, installs **code-server** (VS Code in the browser) via its vendor script — skipped if already present — and enables the `code-server@$USER` systemd service.
 11. On Linux, sets up **RDP remote login** via `gnome-remote-desktop` (Wayland-native): installs the daemon + `openssl`, generates a self-signed TLS cert once, and prompts interactively for shared "gate" credentials (skipped when no terminal is attached, or already set). Disables `xrdp` if present; opens UFW port `3389` only when UFW is already active.
 12. On Linux, installs the **`cloudpex`** NAS mount helper to `/usr/local/bin` via `cloudpex/install.sh`, which prompts for the NAS host, share name, SMB user, mount point and SMB version and writes them to `/etc/cloudpex.conf` (root, `0600`; an existing config is shown and kept unless you say `n`; skipped when no terminal is attached). Nothing is mounted, no password stored, see [`cloudpex/README.md`](cloudpex/README.md).
-13. On Linux, at the very end, **offers** (`[y/N]`, skipped when no terminal is attached) to move **`/tmp` to disk**: Ubuntu mounts `/tmp` as a RAM-backed tmpfs capped at 50% of RAM, which agent runs fill, halving the RAM and breaking every shell with "No space left on device". Accepting masks `tmp.mount` and installs `etc/tmpfiles.d/tmp.conf` (wipe at boot, 10-day purge). Effective at the next reboot.
-14. On Linux, at the very end, **offers** to keep **SSH reachable under memory pressure**: installs the `ssh.service` drop-in (`OOMScoreAdjust=-1000`, `MemoryMin=256M`) and `earlyoom` with `etc/default/earlyoom` (kills the largest process, `node`/`java` first and never `sshd`, once free RAM and swap both drop under 10%). Restarting `ssh` keeps open sessions. Note: `MemoryMin` protects the sshd daemon only; login sessions live in `user.slice`, so no setting can reserve RAM for a future shell. earlyoom acting in time is the real protection.
+13. On Linux, installs the **security baseline**, always, no prompt: **fail2ban** (+ `nftables`) with `etc/fail2ban/jail.d/local.conf` (sshd jail reading the journal, bans the offending IP on every port so the SSH port does not matter, 5 failures in 10 min → 1 h ban, loopback and private LAN ranges never banned); **unattended-upgrades** enabled through `etc/apt/apt.conf.d/20auto-upgrades`; and the **sshd drop-in** `etc/ssh/sshd_config.d/20-hardening.conf` (`PermitRootLogin no`, `MaxAuthTries 3`, `LoginGraceTime 20`), checked with `sshd -t` and removed again if sshd rejects it, then `reload ssh`. Authentication methods, port and user lists are left as they are.
+14. On Linux, at the very end, **offers** (`[y/N]`, skipped when no terminal is attached) to move **`/tmp` to disk**: Ubuntu mounts `/tmp` as a RAM-backed tmpfs capped at 50% of RAM, which agent runs fill, halving the RAM and breaking every shell with "No space left on device". Accepting masks `tmp.mount` and installs `etc/tmpfiles.d/tmp.conf` (wipe at boot, 10-day purge). Effective at the next reboot.
+15. On Linux, at the very end, **offers** to keep **SSH reachable under memory pressure**: installs the `ssh.service` drop-in (`OOMScoreAdjust=-1000`, `MemoryMin=256M`) and `earlyoom` with `etc/default/earlyoom` (kills the largest process, `node`/`java` first and never `sshd`, once free RAM and swap both drop under 10%). Restarting `ssh` keeps open sessions. Note: `MemoryMin` protects the sshd daemon only; login sessions live in `user.slice`, so no setting can reserve RAM for a future shell. earlyoom acting in time is the real protection.
 
 ### Packages installed (apt)
 
@@ -79,6 +83,7 @@ What it does:
 - **Docker**: `docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin` (via Docker's repo)
 - **Remote access**: `gnome-remote-desktop openssl` (apt) + `code-server` (via its vendor install script, not apt) — RDP remote login + browser VS Code
 - **pipx**: `PyMuPDF` (`pymupdf`), `Markdown` (`markdown_py`)
+- **Security baseline (Linux, always)**: `fail2ban nftables unattended-upgrades`
 - **Optional (end-of-install offer, Linux)**: `earlyoom`
 
 The script is re-runnable: each run re-backs up to `~/Oldconfig` (overwriting the previous backup), re-clones plugins, skips Docker if already installed, and re-deploys the `bin/` scripts.
