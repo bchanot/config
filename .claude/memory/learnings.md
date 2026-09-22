@@ -85,3 +85,11 @@ here). Old-server earlyoom file valid as-is. Env-file syntax check: `sh -n`.
 Extract functions (`sed -n '/^fn()/,/^}/p'`) into scratch, define `sudo(){ echo "SUDO: $*"; }` + `systemctl`
 + `findmnt` stubs, override `confirm` per scenario, `</dev/null` for no-TTY. Covers every branch, prints exact
 sudo calls, `set -e` behaviour included. Gotcha: `unset -f` on an overridden fn removes it entirely.
+
+## LRN-012 — fail2ban jail must match the real sshd port, or ban all ports
+2026-09-22. Old server: sshd `Port 337`, fail2ban sshd jail with default `port = ssh` (=22) → bans hit port 22
+only, SSH on 337 stayed open to the banned IP. Silent, no error. Fix options: `port = 337` (needs detection /
+templating, drifts if port changes) or `banaction = %(banaction_allports)s` (offender blocked everywhere, port
+irrelevant) — chose allports. Offline checks without fail2ban installed: python `configparser` with
+BasicInterpolation resolves `%(x)s` refs and proves the file parses; apt.conf → `apt-config
+--config-file=<f> dump APT::Periodic`. sshd drop-ins can't be `sshd -t`-tested without root (host keys).

@@ -59,3 +59,7 @@ end-of-install offers (BDR-011). cloudpex tracked; site values → /etc/cloudpex
 main→develop (a210d01 dtach was main-only), feature finished via lib → develop 836bb67. Not applied live.
 Flagged: secrets in NAS transfert/root (BLK-005), remote-install.sh BRANCH=master stale vs main, gitea-deploy/
 untracked, remote feature branch left on origin (lib deletes local only).
+Later same day: security baseline always-on in install.sh (fail2ban all-ports + RFC1918 ignore, unattended-
+upgrades file, sshd limits drop-in sshd -t gated) on feature/security-baseline (BDR-013, LRN-012: old jail
+banned 22 not 337). auditd + ufw declined. shellcheck/bash -n CLEAN, stub harness incl. sshd -t reject path,
+configparser + apt-config checks. Branch pushed, NOT finished (no merge signal). Live apply = user runbook.

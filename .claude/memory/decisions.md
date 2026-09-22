@@ -98,3 +98,13 @@ in repo, live apply = user.
 main install.sh never aborts; keep-existing [Y/n]; skipped without TTY). Script parses lines
 (`sed -n s/^KEY=//p`), never sources → no code exec as root from config. Alt rejected: sed placeholders into
 deployed script — config + code mixed, every re-run overwrites values. Status: done in repo.
+
+## BDR-013 — security baseline always-on in install.sh: fail2ban (all-ports), unattended-upgrades, sshd limits
+2026-09-22. User: "fail2ban and the like, systematically". Chose no-prompt Linux-block steps: (1) fail2ban sshd
+jail `backend = systemd` + `banaction = %(banaction_allports)s` → SSH port irrelevant (old server banned 22 while
+sshd on 337, LRN-012); `ignoreip` = loopback + RFC1918 static (no LAN detection; trade-off: compromised LAN host
+never banned); 5/10m/1h from RECOVERY doc 01. (2) `20auto-upgrades` file instead of interactive dpkg-reconfigure.
+(3) sshd drop-in limited to PermitRootLogin/MaxAuthTries/LoginGraceTime, `sshd -t` gated, rejected file removed +
+install continues. Declined by user: auditd rules, ufw whitelist (site-specific ports, lockout risk → would be an
+offer, not systematic). Not included by design: PasswordAuthentication no / AllowUsers / X11Forwarding no
+(lockout or workflow risk). Status: done in repo (feature/security-baseline), live apply = user.
