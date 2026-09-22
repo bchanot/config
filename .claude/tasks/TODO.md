@@ -47,6 +47,6 @@ Root cause: /tmp is tmpfs (50% RAM) → agents fill it → RAM halved + ENOSPC b
 - [x] cloudpex/install.sh: prompt host/share/user/mnt/vers (regex-validated), keep-existing [Y/n], no-TTY skip
 - [x] cloudpex/README.md + README.md + CLAUDE.md: no site values, describe prompts + conf file
 - [x] registries: BDR-010/011/012, LRN-009/010/011, BLK-005/006, EVAL-002, journal
-- [ ] reconcile: merge main (a210d01 dtach) into develop via lib helper
-- [ ] gitflow finish feature → develop (explicit user signal: "puis merge")
-- [ ] runbook for live apply on this machine
+- [x] reconcile: merge main (a210d01 dtach) into develop via lib helper
+- [x] gitflow finish feature → develop (explicit user signal: "puis merge")
+- [x] runbook for live apply on this machine

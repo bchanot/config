@@ -50,3 +50,12 @@ menu. Fix: source dtach-router from bashrc-linux (every interactive shell); inst
 unwire_dtach_profile() strips stale ~/.profile block (avoids double-prompt on plain SSH). User chose simplest
 (per-tab) over once-per-connection sentinel. shellcheck install.sh CLEAN, bash -n OK, strip proven idempotent
 on .profile copy. BDR-009 (supersedes BDR-007) + LRN-008. Live needs ./install.sh re-run.
+
+## 2026-09-22 — /tmp on disk + SSH OOM guard + cloudpex conf
+User: swap for /tmp? keep RAM for ssh, old-server rules, cloudpex README+installer. Found /tmp = tmpfs 50% RAM
+→ swap rejected, mask tmp.mount offer (BDR-010). Old rules in NAS RECOVERY/40-systeme: ssh drop-in + earlyoom →
+end-of-install offers (BDR-011). cloudpex tracked; site values → /etc/cloudpex.conf prompted by installer
+(BDR-012). shellcheck/bash -n CLEAN, stub harnesses (LRN-011; EVAL-002 open until live apply). Reconciled
+main→develop (a210d01 dtach was main-only), feature finished via lib → develop 836bb67. Not applied live.
+Flagged: secrets in NAS transfert/root (BLK-005), remote-install.sh BRANCH=master stale vs main, gitea-deploy/
+untracked, remote feature branch left on origin (lib deletes local only).
