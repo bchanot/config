@@ -1,0 +1,71 @@
+#!/usr/bin/env bash
+# cloudpex-mount — monte / démonte le partage SMB CloudPex du NAS
+# Usage : cloudpex-mount        -> monte (demande le mot de passe)
+#         cloudpex-mount -u     -> démonte
+#         cloudpex-mount -s     -> état
+# Aucun credential n'est écrit sur disque ni passé en argument (invisible dans ps).
+
+set -euo pipefail
+
+SHARE="//192.168.1.111/CloudPex"
+MNT="/mnt/cloudpex"
+SMB_USER="bchanot_smb"
+SMB_VERS="3.0"
+
+# Re-lance le script en root si nécessaire (avant toute saisie du mot de passe)
+if [[ $EUID -ne 0 ]]; then
+    exec sudo -- "$0" "$@"
+fi
+
+# Propriétaire des fichiers montés : l'utilisateur qui a lancé sudo, sinon 1000
+OWNER_UID="${SUDO_UID:-1000}"
+OWNER_GID="${SUDO_GID:-1000}"
+
+die() { echo "Erreur : $*" >&2; exit 1; }
+
+is_mounted() { mountpoint -q "$MNT"; }
+
+do_status() {
+    if is_mounted; then
+        echo "Monté : $SHARE -> $MNT"
+        df -h "$MNT" | tail -n 1
+    else
+        echo "Non monté."
+    fi
+}
+
+do_umount() {
+    is_mounted || { echo "Déjà démonté."; return 0; }
+    umount "$MNT" || die "démontage impossible (fichiers ouverts ? voir : lsof +D $MNT)"
+    echo "Démonté : $MNT"
+}
+
+do_mount() {
+    command -v mount.cifs >/dev/null || die "cifs-utils absent (sudo apt install cifs-utils)"
+    is_mounted && { echo "Déjà monté : $MNT"; return 0; }
+
+    mkdir -p "$MNT"
+
+    local pass
+    read -rsp "Mot de passe SMB pour ${SMB_USER}@${SHARE} : " pass
+    echo
+    [[ -n "$pass" ]] || die "mot de passe vide"
+
+    # mount.cifs lit PASSWD dans l'environnement : pas d'exposition dans ps ni sur disque
+    if PASSWD="$pass" mount -t cifs "$SHARE" "$MNT" \
+        -o "username=${SMB_USER},uid=${OWNER_UID},gid=${OWNER_GID},iocharset=utf8,vers=${SMB_VERS},file_mode=0640,dir_mode=0750,nosuid,nodev,noexec"; then
+        unset pass
+        echo "Monté : $SHARE -> $MNT"
+    else
+        unset pass
+        die "échec du montage (mot de passe, réseau ou version SMB ; voir : dmesg | tail)"
+    fi
+}
+
+case "${1:-}" in
+    "")        do_mount ;;
+    -u|-d|--umount|dc|disconnect|disable) do_umount ;;
+    -s|--status) do_status ;;
+    -h|--help) sed -n '2,6p' "$0" ;;
+    *)         die "option inconnue : $1 (voir -h)" ;;
+esac
