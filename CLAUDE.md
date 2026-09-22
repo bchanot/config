@@ -23,8 +23,16 @@ vim/colors/           molokai colorscheme (committed)
 bash/bashrc-{linux,osx}          OS-detected bashrc
 bin/{dt,dtach-router,claude-provider}   CLI scripts deployed to ~/.local/bin
 etc/profile.d/disk-usage-warning.sh     login-time low-disk warning → /etc/profile.d (Linux only)
+etc/tmpfiles.d/tmp.conf                 disk-backed /tmp cleanup rules (offer: /tmp on disk)
+etc/systemd/ssh.service.d/override.conf sshd OOM-exempt drop-in (offer: SSH memory guard)
+etc/default/earlyoom                    earlyoom args, spare sshd / kill node first (same offer)
+cloudpex/{cloudpex,install.sh,README.md} on-demand SMB mount helper → /usr/local/bin; site values
+                                         prompted at install → /etc/cloudpex.conf, never in the script (FR docs)
 .claude/{tasks,memory,audits}/   Claude working state
 ```
+
+`/tmp` is a RAM-backed tmpfs on Ubuntu (50% of RAM): agent runs fill it, which is why
+install.sh offers to mask `tmp.mount`. Swap is not the fix (the cap and ENOSPC stay).
 
 `pymupdf`/`markdown_py` are NOT tracked — they are pipx entry-point shims,
 recreated by `pipx install PyMuPDF Markdown` in install.sh.
@@ -35,8 +43,8 @@ original had a live key; it was scrubbed — see decisions/blockers).
 
 | Task  | Command                                  |
 | ----- | ---------------------------------------- |
-| Lint  | `shellcheck *.sh bash/bashrc-*`          |
-| Syntax check | `bash -n install.sh remote-install.sh` |
+| Lint  | `shellcheck *.sh cloudpex/install.sh cloudpex/cloudpex bash/bashrc-*` |
+| Syntax check | `bash -n install.sh remote-install.sh cloudpex/install.sh` |
 | Install | `./install.sh` (OS auto-detected) |
 | Remote install | `curl -fsSL <raw>/remote-install.sh \| bash` |
 

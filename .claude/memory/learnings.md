@@ -67,3 +67,21 @@ via `~/.profile` AND directly by non-login interactive shells), NOT `~/.profile`
 (its `~/.profile` fix is valid only for real login shells, not IDE remotes). Deductive tell that pinned it:
 wiring proven correct + target resource (session) proven present, yet menu never fires at startup → the startup
 file is not being sourced → non-login shell. See BDR-009.
+
+## LRN-009 — tmpfs /tmp + agents: two symptoms, one cause; swap is not the fix
+2026-09-22. "RAM overloaded" + "No space left on device" in shells = same root: /tmp tmpfs (RAM). Diagnose
+`findmnt -T /tmp` (FSTYPE tmpfs, SIZE=50% RAM). Swap only pages tmpfs out, cap unchanged. Fix = /tmp on disk
+(mask tmp.mount; it is wanted from `/usr/lib/systemd/system/local-fs.target.wants/`). Gotcha:
+`/etc/tmpfiles.d/X.conf` REPLACES `/usr/lib/tmpfiles.d/X.conf` wholesale → copy the other lines
+(`q /var/tmp 30d`) or they vanish. Validate: `systemd-tmpfiles --dry-run --create <file>`.
+
+## LRN-010 — systemd `$VAR` in ExecStart honours quotes inside EnvironmentFile values
+2026-09-22. `EARLYOOM_ARGS="-m 10 --avoid '^(a|b)$'"` + `ExecStart=… $EARLYOOM_ARGS`: bare `$VAR` = split on
+whitespace, quotes respected then stripped → regex arrives as ONE arg. `${VAR}` = whole value as one arg (wrong
+here). Old-server earlyoom file valid as-is. Env-file syntax check: `sh -n`.
+
+## LRN-011 — verify sudo-bound installer functions with a stub harness
+2026-09-22. Can't run sudo/systemctl here (security rule; permission layer even denied `systemctl is-enabled`).
+Extract functions (`sed -n '/^fn()/,/^}/p'`) into scratch, define `sudo(){ echo "SUDO: $*"; }` + `systemctl`
++ `findmnt` stubs, override `confirm` per scenario, `</dev/null` for no-TTY. Covers every branch, prints exact
+sudo calls, `set -e` behaviour included. Gotcha: `unset -f` on an overridden fn removes it entirely.

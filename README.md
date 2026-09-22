@@ -16,7 +16,11 @@ curl -fsSL https://git.bchanot.fr/bchanot/config/raw/branch/master/remote-instal
 
 | Path                 | Purpose                                                        |
 | -------------------- | -------------------------------------------------------------- |
-| `install.sh`         | Installs apt packages + Docker + code-server + RDP (gnome-remote-desktop), backs up old config, deploys vim + bashrc (OS-detected), installs CLI scripts, pipx tools, and a low-disk login warning. |
+| `install.sh`         | Installs apt packages + Docker + code-server + RDP (gnome-remote-desktop), backs up old config, deploys vim + bashrc (OS-detected), installs CLI scripts, pipx tools, a low-disk login warning and the `cloudpex` NAS mount helper; ends by offering two system changes (`/tmp` on disk, SSH memory guard). |
+| `cloudpex/`          | On-demand SMB mount of a NAS share (`cloudpex` command + its installer). Site values (host, share, SMB user, mount point, SMB version) are prompted at install and stored in `/etc/cloudpex.conf`, never in the script. French README inside. |
+| `etc/tmpfiles.d/tmp.conf` | Cleanup rules for a disk-backed `/tmp` (wiped at boot, 10-day purge). Deployed by the `/tmp` on disk offer. |
+| `etc/systemd/ssh.service.d/override.conf` | `ssh.service` drop-in: sshd exempt from the OOM killer + memory reclaim protection. Deployed by the SSH memory guard offer. |
+| `etc/default/earlyoom` | earlyoom arguments: spare sshd/systemd, kill node/java first. Deployed by the SSH memory guard offer. |
 | `vim/vimrc`          | Vim config: pathogen, molokai, syntastic (C with `-Wall -Werror -Wextra`), NERDTree, 42-style canonical class generators (`:ClassH`, `:ClassC`). |
 | `vim/autoload/`      | `pathogen.vim` plugin loader (committed).                      |
 | `vim/colors/`        | `molokai.vim` colorscheme (committed).                         |
@@ -61,6 +65,9 @@ What it does:
 9. On Linux, installs `etc/profile.d/disk-usage-warning.sh` to `/etc/profile.d/` (needs `sudo`) so each login warns when `/` or `/home` cross 85% usage.
 10. On Linux, installs **code-server** (VS Code in the browser) via its vendor script — skipped if already present — and enables the `code-server@$USER` systemd service.
 11. On Linux, sets up **RDP remote login** via `gnome-remote-desktop` (Wayland-native): installs the daemon + `openssl`, generates a self-signed TLS cert once, and prompts interactively for shared "gate" credentials (skipped when no terminal is attached, or already set). Disables `xrdp` if present; opens UFW port `3389` only when UFW is already active.
+12. On Linux, installs the **`cloudpex`** NAS mount helper to `/usr/local/bin` via `cloudpex/install.sh`, which prompts for the NAS host, share name, SMB user, mount point and SMB version and writes them to `/etc/cloudpex.conf` (root, `0600`; an existing config is shown and kept unless you say `n`; skipped when no terminal is attached). Nothing is mounted, no password stored, see [`cloudpex/README.md`](cloudpex/README.md).
+13. On Linux, at the very end, **offers** (`[y/N]`, skipped when no terminal is attached) to move **`/tmp` to disk**: Ubuntu mounts `/tmp` as a RAM-backed tmpfs capped at 50% of RAM, which agent runs fill, halving the RAM and breaking every shell with "No space left on device". Accepting masks `tmp.mount` and installs `etc/tmpfiles.d/tmp.conf` (wipe at boot, 10-day purge). Effective at the next reboot.
+14. On Linux, at the very end, **offers** to keep **SSH reachable under memory pressure**: installs the `ssh.service` drop-in (`OOMScoreAdjust=-1000`, `MemoryMin=256M`) and `earlyoom` with `etc/default/earlyoom` (kills the largest process, `node`/`java` first and never `sshd`, once free RAM and swap both drop under 10%). Restarting `ssh` keeps open sessions. Note: `MemoryMin` protects the sshd daemon only; login sessions live in `user.slice`, so no setting can reserve RAM for a future shell. earlyoom acting in time is the real protection.
 
 ### Packages installed (apt)
 
@@ -72,6 +79,7 @@ What it does:
 - **Docker**: `docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin` (via Docker's repo)
 - **Remote access**: `gnome-remote-desktop openssl` (apt) + `code-server` (via its vendor install script, not apt) — RDP remote login + browser VS Code
 - **pipx**: `PyMuPDF` (`pymupdf`), `Markdown` (`markdown_py`)
+- **Optional (end-of-install offer, Linux)**: `earlyoom`
 
 The script is re-runnable: each run re-backs up to `~/Oldconfig` (overwriting the previous backup), re-clones plugins, skips Docker if already installed, and re-deploys the `bin/` scripts.
 
