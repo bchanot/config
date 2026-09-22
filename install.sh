@@ -141,6 +141,46 @@ install_cloudpex() {
 	bash "$SCRIPT_DIR/cloudpex/install.sh"
 }
 
+# fail2ban: bans an IP on every port after repeated SSH failures. The sshd jail
+# reads the journal (works with or without /var/log/auth.log) and bans all ports,
+# so the port sshd listens on does not matter — the previous server's jail only
+# banned port 22 while sshd listened on 337. Private LAN ranges are never banned.
+# nftables is the ban backend. Idempotent: config overwritten, service restarted.
+install_fail2ban() {
+	echo "Installing fail2ban (sshd jail, all-ports ban)"
+	sudo apt-get install -y fail2ban nftables
+	sudo install -D -m 0644 "$SCRIPT_DIR/etc/fail2ban/jail.d/local.conf" \
+		/etc/fail2ban/jail.d/local.conf
+	sudo systemctl enable fail2ban
+	sudo systemctl restart fail2ban
+}
+
+# Automatic security updates: the file dpkg-reconfigure would write, deployed
+# directly so the install stays non-interactive. Idempotent.
+install_unattended_upgrades() {
+	echo "Enabling unattended security upgrades"
+	sudo apt-get install -y unattended-upgrades
+	sudo install -D -m 0644 "$SCRIPT_DIR/etc/apt/apt.conf.d/20auto-upgrades" \
+		/etc/apt/apt.conf.d/20auto-upgrades
+}
+
+# sshd hardening drop-in (PermitRootLogin, MaxAuthTries, LoginGraceTime): only
+# settings that cannot lock anyone out; authentication methods stay untouched.
+# Validated with sshd -t before the reload. A rejected file is removed rather than
+# left in place, so sshd keeps starting on the next boot; the install goes on and
+# the warning tells you.
+harden_sshd() {
+	echo "Deploying sshd hardening drop-in"
+	sudo install -D -m 0644 "$SCRIPT_DIR/etc/ssh/sshd_config.d/20-hardening.conf" \
+		/etc/ssh/sshd_config.d/20-hardening.conf
+	if ! sudo sshd -t; then
+		sudo rm -f /etc/ssh/sshd_config.d/20-hardening.conf
+		echo "sshd rejected 20-hardening.conf — removed, sshd config unchanged" >&2
+		return 0
+	fi
+	sudo systemctl reload ssh
+}
+
 # Yes/no prompt for the optional system changes offered at the end of the install.
 # Declines (returns 1) when no terminal is attached (curl | bash), so an offer is
 # skipped with a hint instead of blocking; re-run ./install.sh from a terminal to
@@ -245,6 +285,11 @@ if command -v apt-get >/dev/null 2>&1; then
 
 	# On-demand NAS mount helper (cloudpex/).
 	install_cloudpex
+
+	# Security baseline: brute-force bans, automatic security updates, sshd limits.
+	install_fail2ban
+	install_unattended_upgrades
+	harden_sshd
 else
 	echo "apt-get not found — skipping system packages (install vim/git manually)."
 fi
