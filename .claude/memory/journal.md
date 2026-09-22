@@ -63,3 +63,4 @@ Later same day: security baseline always-on in install.sh (fail2ban all-ports + 
 upgrades file, sshd limits drop-in sshd -t gated) on feature/security-baseline (BDR-013, LRN-012: old jail
 banned 22 not 337). auditd + ufw declined. shellcheck/bash -n CLEAN, stub harness incl. sshd -t reject path,
 configparser + apt-config checks. Branch pushed, NOT finished (no merge signal). Live apply = user runbook.
+Update: user said merge → feature/security-baseline finished via lib, develop a6c416e pushed.
