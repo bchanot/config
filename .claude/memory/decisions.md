@@ -73,3 +73,28 @@ the exact noise BDR-007 avoided, now tolerated for VS Code reliability. Alts rej
 sentinel keyed to `SSH_CONNECTION`/`VSCODE_IPC_HOOK_CLI` in `$XDG_RUNTIME_DIR` — more code, user declined;
 (b) VS Code `terminal.integrated` `args:["-l"]` — not carried by dotfiles, same per-tab firing. Supersedes
 BDR-007. Status: done in repo; live needs `./install.sh` re-run.
+
+## BDR-010 — /tmp on disk (mask tmp.mount), swap rejected
+2026-09-22. Ubuntu 26.04 mounts /tmp tmpfs size=50% RAM (7.4G of 14G here). Agents fill it → RAM halved +
+ENOSPC → shells break. Chose `systemctl mask tmp.mount` + `/etc/tmpfiles.d/tmp.conf` (`D /tmp 10d`, `/var/tmp`
+line kept). Offered [y/N] end of install.sh (`offer_tmp_on_disk`), TTY-guarded, idempotent, effective next
+reboot (never umount live). Alts rejected: (a) add/grow swap — cap + ENOSPC stay, thrash instead of OOM;
+(b) bigger tmpfs `size=` — still RAM; (c) `TMPDIR=/var/tmp` in bashrc — leaky (services, IDE spawns, cron).
+Status: done in repo, live apply = user (EVAL-002).
+
+## BDR-011 — SSH memory guard = old-server rules (ssh drop-in + earlyoom), systemd-oomd untouched
+2026-09-22. Restored from NAS `RECOVERY/40-systeme/etc`: `ssh.service.d/override.conf` (MemoryMin=256M,
+OOMScoreAdjust=-1000) + earlyoom `-r 60 -m 10 -s 10 --avoid '^(sshd|systemd|systemd-logind|dbus-daemon|containerd)$'
+--prefer '^(java|node|pnpm|esbuild)$'`. MemoryMin covers sshd cgroup only (logind puts sessions in user.slice)
+→ real guard = OOMScoreAdjust + earlyoom (kills ONE largest proc, shell survives). systemd-oomd (Ubuntu default
+`ManagedOOMMemoryPressure=kill` 50% on user@.service, kills WHOLE session cgroup) left as-is: zero kills in
+journal (fresh install), unproven as shell-killer. `offer_ssh_memory_guard`, [y/N], idempotent, ssh restart keeps
+sessions (KillMode=process). Alt rejected: drop-in only — kernel/oomd may still kill whole session. Status: done
+in repo, live apply = user.
+
+## BDR-012 — cloudpex site values in /etc/cloudpex.conf, prompted by installer
+2026-09-22. User: no IP/user in script. Chose key=value `/etc/cloudpex.conf` root:root 0600 written by
+`cloudpex/install.sh` prompts (HOST, SHARE, SMB_USER, MNT, SMB_VERS; regex-validated, re-ask on bad input so
+main install.sh never aborts; keep-existing [Y/n]; skipped without TTY). Script parses lines
+(`sed -n s/^KEY=//p`), never sources → no code exec as root from config. Alt rejected: sed placeholders into
+deployed script — config + code mixed, every re-run overwrites values. Status: done in repo.
