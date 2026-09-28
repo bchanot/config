@@ -93,3 +93,11 @@ templating, drifts if port changes) or `banaction = %(banaction_allports)s` (off
 irrelevant) — chose allports. Offline checks without fail2ban installed: python `configparser` with
 BasicInterpolation resolves `%(x)s` refs and proves the file parses; apt.conf → `apt-config
 --config-file=<f> dump APT::Periodic`. sshd drop-ins can't be `sshd -t`-tested without root (host keys).
+
+## LRN-013 — distro package lags upstream: probe subcommand before calling it
+2026-09-28. Ubuntu apt gitleaks = 8.16; lib pre-commit hook written for >= 8.19 (`gitleaks git --staged`).
+"unknown command" exit 1 read as a leak → every commit blocked, silently (stderr swallowed). Script calling a
+subcommand born in version N must probe `tool sub --help` and fall back (`protect --staged`). Test faking
+"binary absent" via shorter PATH (`/usr/bin:/bin`) breaks once the binary lives in /usr/bin: symlink farm of
+/usr/bin minus the binary instead. Apply: any tool install.sh pulls from apt while ~/.claude scripts assume
+the upstream release. Fix: claude-config bugfix/gitleaks-protect-fallback.

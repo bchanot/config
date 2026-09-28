@@ -108,3 +108,11 @@ never banned); 5/10m/1h from RECOVERY doc 01. (2) `20auto-upgrades` file instead
 install continues. Declined by user: auditd rules, ufw whitelist (site-specific ports, lockout risk → would be an
 offer, not systematic). Not included by design: PasswordAuthentication no / AllowUsers / X11Forwarding no
 (lockout or workflow risk). Status: done in repo (feature/security-baseline), live apply = user.
+
+## BDR-014 — install.sh mirrors machine apt set: GNOME + LAMP unconditional, NVIDIA via ubuntu-drivers
+2026-09-28. Source: `apt-mark showmanual` + /var/log/apt/history.log diffed vs script. Added gitleaks, web stack
+(mariadb-server imagemagick php-* unversioned → follows distro PHP), ubuntu-desktop-minimal before RDP setup
+(gnome-remote-desktop needs GDM, bare server had none), `install_nvidia_driver()` = `lspci -d 10de:` gate +
+`ubuntu-drivers install` (distro-recommended, 595-open today). Alternatives rejected: pin nvidia-driver-595-open
+(ages, hardware-bound), LAMP behind confirm() offer (user: base list), GNOME left implicit (RDP fails silently).
+Status: merged to develop. Live rerun of install.sh = user.

@@ -68,3 +68,13 @@ Cleanup: user asked all-in-develop + delete branches. Hooks refresh committed (a
 branches verified merged; `git push --delete` DENIED by permission layer → user runs it. gitea-deploy/ (untracked
 Gitea server deploy project, 31 files, no secrets) moved to ~/Documents/gitea-deploy, own repo via gitflow init,
 pushed main+develop to git.bchanot.fr (push-to-create worked). deploy.conf gitignored.
+
+## 2026-09-28
+- feature/apt-packages (0bc9e3f, unmerged): install.sh mirrors machine apt set. Diff `apt-mark showmanual` +
+apt history vs script → added gitleaks, web stack (mariadb-server imagemagick php-* unversioned),
+ubuntu-desktop-minimal before RDP, install_nvidia_driver() (lspci 10de gate, `ubuntu-drivers install`, no pin).
+User approved 3 choices (GNOME in, ubuntu-drivers, LAMP unconditional). shellcheck + bash -n + stub run OK.
+- Blocked mid-commit: lib pre-commit ran `gitleaks git --staged`, Ubuntu apt gitleaks = 8.16 (no `git` subcmd,
+exit 1 read as leak). Fixed in claude-config bugfix/gitleaks-protect-fallback (347073a, unmerged): probe
+`gitleaks git --help`, fallback `protect --staged`; T16c symlink-farm PATH. make test 0. Hooks refreshed here (9e49b9d).
+- Note: `gh` in install.sh list but not installed on this box (script not rerun since added).

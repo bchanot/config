@@ -67,7 +67,7 @@ What it does:
 8. Copies the `bin/` scripts (`dt`, `dtach-router`, `claude-provider`) into `~/.local/bin`. The dtach session-resume menu ships in the deployed `bashrc-linux`, so every interactive shell offers it — including VS Code Remote-SSH terminals, which are non-login and never read `~/.profile`. The installer also strips any older dtach block left in `~/.profile` so a plain SSH login doesn't prompt twice.
 9. On Linux, installs `etc/profile.d/disk-usage-warning.sh` to `/etc/profile.d/` (needs `sudo`) so each login warns when `/` or `/home` cross 85% usage.
 10. On Linux, installs **code-server** (VS Code in the browser) via its vendor script — skipped if already present — and enables the `code-server@$USER` systemd service.
-11. On Linux, sets up **RDP remote login** via `gnome-remote-desktop` (Wayland-native): installs the daemon + `openssl`, generates a self-signed TLS cert once, and prompts interactively for shared "gate" credentials (skipped when no terminal is attached, or already set). Disables `xrdp` if present; opens UFW port `3389` only when UFW is already active.
+11. On Linux, installs **`ubuntu-desktop-minimal`** (GDM + GNOME Shell, ~1.5 GB): the RDP remote login below hands out a GNOME session, which a bare server install does not have. Then sets up **RDP remote login** via `gnome-remote-desktop` (Wayland-native): installs the daemon + `openssl`, generates a self-signed TLS cert once, and prompts interactively for shared "gate" credentials (skipped when no terminal is attached, or already set). Disables `xrdp` if present; opens UFW port `3389` only when UFW is already active. Finally, when `lspci` sees an NVIDIA GPU, runs `ubuntu-drivers install` to put on the driver the distro recommends for the card (no version pinned; loads at the next reboot). Skipped on machines without an NVIDIA GPU.
 12. On Linux, installs the **`cloudpex`** NAS mount helper to `/usr/local/bin` via `cloudpex/install.sh`, which prompts for the NAS host, share name, SMB user, mount point and SMB version and writes them to `/etc/cloudpex.conf` (root, `0600`; an existing config is shown and kept unless you say `n`; skipped when no terminal is attached). Nothing is mounted, no password stored, see [`cloudpex/README.md`](cloudpex/README.md).
 13. On Linux, installs the **security baseline**, always, no prompt: **fail2ban** (+ `nftables`) with `etc/fail2ban/jail.d/local.conf` (sshd jail reading the journal, bans the offending IP on every port so the SSH port does not matter, 5 failures in 10 min → 1 h ban, loopback and private LAN ranges never banned); **unattended-upgrades** enabled through `etc/apt/apt.conf.d/20auto-upgrades`; and the **sshd drop-in** `etc/ssh/sshd_config.d/20-hardening.conf` (`PermitRootLogin no`, `MaxAuthTries 3`, `LoginGraceTime 20`), checked with `sshd -t` and removed again if sshd rejects it, then `reload ssh`. Authentication methods, port and user lists are left as they are.
 14. On Linux, at the very end, **offers** (`[y/N]`, skipped when no terminal is attached) to move **`/tmp` to disk**: Ubuntu mounts `/tmp` as a RAM-backed tmpfs capped at 50% of RAM, which agent runs fill, halving the RAM and breaking every shell with "No space left on device". Accepting masks `tmp.mount` and installs `etc/tmpfiles.d/tmp.conf` (wipe at boot, 10-day purge). Effective at the next reboot.
@@ -75,12 +75,14 @@ What it does:
 
 ### Packages installed (apt)
 
-- **Build / VCS / C dev**: `vim git git-lfs git-filter-repo gcc make pkg-config dkms valgrind shellcheck`
+- **Build / VCS / C dev**: `vim git git-lfs git-filter-repo gitleaks gcc make pkg-config dkms valgrind shellcheck gh`
 - **Net / security / transport**: `curl gnupg ca-certificates apt-transport-https net-tools openssh-server cifs-utils lftp ftp`
 - **Shell tooling**: `unzip tree tmux fzf dtach`
 - **Runtimes**: `nodejs python3-pip pipx php-cli`
+- **Web stack (local WordPress/LAMP)**: `mariadb-server imagemagick php-mysql php-gd php-imagick php-mbstring php-xml php-intl php-curl` (unversioned `php-*` metapackages, so they follow the distro's PHP)
 - **Media / doc CLI**: `ffmpeg weasyprint poppler-utils qpdf webp libavif-bin`
 - **Docker**: `docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin` (via Docker's repo)
+- **Desktop / GPU**: `ubuntu-desktop-minimal` (always, Linux) + the distro-recommended NVIDIA driver via `ubuntu-drivers install` (only when an NVIDIA GPU is detected)
 - **Remote access**: `gnome-remote-desktop openssl` (apt) + `code-server` (via its vendor install script, not apt) — RDP remote login + browser VS Code
 - **pipx**: `PyMuPDF` (`pymupdf`), `Markdown` (`markdown_py`)
 - **Security baseline (Linux, always)**: `fail2ban nftables unattended-upgrades`

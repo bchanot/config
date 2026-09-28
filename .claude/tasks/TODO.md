@@ -60,3 +60,12 @@ Branch: feature/security-baseline (off develop). Scope approved: fail2ban, unatt
 - [x] README.md (table, step 13, packages) + CLAUDE.md layout
 - [x] shellcheck + bash -n; stub harness harden_sshd (accept / reject paths); configparser check of jail file
 - [x] commit; registries (BDR-013, LRN-012); runbook. No finish without explicit signal.
+
+## Feature — install.sh mirrors this machine's apt packages (2026-09-28)
+Branch: feature/apt-packages (off develop). Source: apt-mark showmanual + /var/log/apt/history.log diffed against install.sh.
+- [x] gitleaks in the base list (backs the pre-commit hook)
+- [x] web stack group: mariadb-server imagemagick + unversioned php-* modules (approved: base list, not an offer)
+- [x] ubuntu-desktop-minimal before setup_remote_desktop (approved)
+- [x] install_nvidia_driver(): lspci vendor 10de gate + ubuntu-drivers install (approved: no version pin)
+- [x] README steps 11 + packages; shellcheck + bash -n; stub run of the NVIDIA helper
+- [x] commit on the feature branch. No finish without explicit signal.
