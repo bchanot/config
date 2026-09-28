@@ -27,6 +27,25 @@ install_docker() {
 	sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
 }
 
+# NVIDIA driver: only when an NVIDIA GPU is on the PCI bus (vendor id 10de), so the
+# script stays hardware-agnostic elsewhere. ubuntu-drivers picks the driver the distro
+# recommends for the card (595-open on the RTX 3060 Ti this was written on) instead of
+# pinning a version that ages. Idempotent: a no-op when the recommended driver is in.
+# The driver loads at the next reboot. Ubuntu-only (ubuntu-drivers-common).
+install_nvidia_driver() {
+	if ! command -v ubuntu-drivers >/dev/null 2>&1; then
+		echo "ubuntu-drivers not found — skipping NVIDIA driver" >&2
+		return 0
+	fi
+	if [ -z "$(lspci -d 10de: 2>/dev/null)" ]; then
+		echo "No NVIDIA GPU detected — skipping NVIDIA driver"
+		return 0
+	fi
+	echo "NVIDIA GPU detected — installing the recommended driver"
+	sudo ubuntu-drivers install
+	echo "NVIDIA driver loads at the next reboot."
+}
+
 # RDP "gate" credentials: a shared username/password that unlocks the GDM
 # login screen (each user then logs into GDM with his own account). Required —
 # without it the RDP server rejects every connection (mstsc error 0x904). It is
@@ -259,14 +278,18 @@ if command -v apt-get >/dev/null 2>&1; then
 	sudo apt-get update
 	sudo apt-get upgrade -y
 
-	# Build + version control + C dev tooling.
+	# Build + version control + C dev tooling (gitleaks backs the pre-commit hook).
+	# Web stack: MariaDB + PHP modules for local WordPress/LAMP work; the php-* metapackages
+	# follow the distro's PHP version instead of pinning php8.x-*.
 	sudo apt-get install -y \
-		vim git git-lfs git-filter-repo gcc make pkg-config dkms valgrind shellcheck \
+		vim git git-lfs git-filter-repo gitleaks gcc make pkg-config dkms valgrind shellcheck \
 		curl gnupg ca-certificates apt-transport-https \
 		unzip tree tmux fzf dtach net-tools \
 		openssh-server cifs-utils lftp ftp \
 		nodejs python3-pip pipx php-cli \
-		ffmpeg weasyprint poppler-utils qpdf webp libavif-bin gh
+		ffmpeg weasyprint poppler-utils qpdf webp libavif-bin gh \
+		mariadb-server imagemagick \
+		php-mysql php-gd php-imagick php-mbstring php-xml php-intl php-curl
 
 	# Docker (separate repo).
 	install_docker
@@ -277,8 +300,15 @@ if command -v apt-get >/dev/null 2>&1; then
 	fi
 	sudo systemctl enable --now "code-server@$USER"
 
+	# GNOME desktop (GDM + Shell): the RDP remote login below needs a GNOME session
+	# to hand out; a bare server install has none. Ubuntu-only metapackage.
+	sudo apt-get install -y ubuntu-desktop-minimal
+
 	# Remote desktop (gnome-remote-desktop — see the function header for why not xrdp).
 	setup_remote_desktop
+
+	# NVIDIA driver, only when an NVIDIA GPU is present.
+	install_nvidia_driver
 
 	# Low-disk login warning (system-wide profile.d snippet).
 	install_disk_warning
