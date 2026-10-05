@@ -78,3 +78,9 @@ User approved 3 choices (GNOME in, ubuntu-drivers, LAMP unconditional). shellche
 exit 1 read as leak). Fixed in claude-config bugfix/gitleaks-protect-fallback (347073a, unmerged): probe
 `gitleaks git --help`, fallback `protect --staged`; T16c symlink-farm PATH. make test 0. Hooks refreshed here (9e49b9d).
 - Note: `gh` in install.sh list but not installed on this box (script not rerun since added).
+
+## 2026-10-05 — macOS support + zsh/bash choice
+Local main 15 commits behind develop → worked off develop. install.sh Darwin branch (Homebrew, colima, brew services,
+gaps report), bashrc-osx = bashrc-linux + macOS deltas, dt portable, zsh option (oh-my-zsh + bchanot theme). Tested:
+shellcheck, bash 3.2/5 + zsh -n, bashrc/zshrc/theme live in shells, dt with real dtach session, stub harness both
+choices. Full install.sh not run on this Mac. BDR-015/016, LRN-014, BLK-007. Merged develop 7d5dabd, not pushed.

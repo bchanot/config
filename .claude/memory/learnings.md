@@ -101,3 +101,10 @@ subcommand born in version N must probe `tool sub --help` and fall back (`protec
 "binary absent" via shorter PATH (`/usr/bin:/bin`) breaks once the binary lives in /usr/bin: symlink farm of
 /usr/bin minus the binary instead. Apply: any tool install.sh pulls from apt while ~/.claude scripts assume
 the upstream release. Fix: claude-config bugfix/gitleaks-protect-fallback.
+
+## LRN-014 — macOS (BSD/bash 3.2) traps for Linux shell scripts
+2026-10-05. `cp -u` absent on BSD cp → `cp -Rp`. BSD `date` no `%N` → bash 5 `$EPOCHREALTIME` (strip `[.,]`, fr
+locale = comma); no `date -d` → `date -j -f '%a %b %e %T %Y'` with `LC_ALL=C ps -o lstart=`. No /proc → cwd via
+`lsof -a -p PID -d cwd -Fn`. bash 3.2 `${x/#$HOME/\~}` keeps backslash → use var `tilde='~'`. BSD sed no `\?` in BRE
+→ `sed -E`. Terminal.app = LOGIN shells → read ~/.bash_profile only → must source ~/.bashrc. `ls --color` → `ls -G`.
+zsh: `status` is read-only special var, don't name locals that. Verify installer fns via stub harness (LRN-011).

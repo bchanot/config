@@ -116,3 +116,18 @@ offer, not systematic). Not included by design: PasswordAuthentication no / Allo
 `ubuntu-drivers install` (distro-recommended, 595-open today). Alternatives rejected: pin nvidia-driver-595-open
 (ages, hardware-bound), LAMP behind confirm() offer (user: base list), GNOME left implicit (RDP fails silently).
 Status: merged to develop. Live rerun of install.sh = user.
+
+## BDR-015 — macOS: Homebrew replaces apt, Docker via colima, login shell bash 5 OR zsh (user choice)
+2026-10-05. install.sh Darwin branch: ensure_homebrew (official script if missing) → brew update/upgrade → apt list
+mapped to formulae. Docker = colima + docker/compose/buildx CLI (`cliPluginsExtraDirs` written only if
+~/.docker/config.json absent). colima/code-server/mariadb = `brew services` (skip if started). Shell asked first
+(`MACOS_SHELL` presets, no TTY → bash): bash → brew bash 5 in /etc/shells + chsh (macOS bash 3.2 too old: no
+EPOCHREALTIME, HISTSIZE=-1); zsh → oh-my-zsh unattended + zsh/zshrc-osx + bchanot.zsh-theme (bash prompt port), chsh
+/bin/zsh. End: print_macos_gaps lists Linux-only items skipped. Alts rejected: Docker Desktop (GUI, licence), no
+Docker; staying on zsh w/o config. Status: merged develop 7d5dabd.
+
+## BDR-016 — ~/.zshrc backed up to ~/.zshrc.backup-<date>, not ~/Oldconfig
+2026-10-05. ~/Oldconfig is `rm -rf` at every run → 2nd run destroys 1st-run backup of user's real zshrc (nvm, bun
+lines). deploy_zsh_config: if ~/.zshrc differs from repo copy (cmp -s) → timestamped mv in $HOME; identical → no
+backup (rerun no dup). Machine-specific lines → ~/.zshrc.local (sourced). Same flaw still on .bashrc/.vim (open,
+not fixed). Status: done.

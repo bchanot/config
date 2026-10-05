@@ -43,3 +43,7 @@ ensure_rdp_credentials (prompt, TTY-guarded, idempotent). Supersedes BLK-003 (xr
 identified (guard-bash hook vs auto-mode classifier). Workaround: read unit files under /usr/lib/systemd +
 /etc/systemd directly, `ls`/`du` on literal paths, no `find -exec`, no `sudo`. Cost ≈ 5 retries. Candidate fix:
 allowlist `systemctl {cat,show,is-enabled,is-active,status}` wherever the denial comes from.
+
+## BLK-007 — remote-install.sh + README one-liner point at branch `master` — OPEN
+2026-10-05. `BRANCH="${BRANCH:-master}"` + README raw URLs `/branch/master/`, but repo = main/develop (gitflow) →
+curl|bash one-liner 404 / clone fails. Fix: default `main`, update URLs. Not fixed (out of macOS scope).
