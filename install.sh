@@ -273,7 +273,192 @@ offer_ssh_memory_guard() {
 	fi
 }
 
-# System packages: Debian/Ubuntu only. Skipped where apt-get is absent (e.g. macOS).
+# Put brew on this script's PATH (Apple Silicon: /opt/homebrew, Intel: /usr/local).
+# Returns 1 when Homebrew is not installed.
+load_brew_env() {
+	local brew_bin
+	for brew_bin in /opt/homebrew/bin/brew /usr/local/bin/brew; do
+		if [ -x "$brew_bin" ]; then
+			eval "$("$brew_bin" shellenv)"
+			return 0
+		fi
+	done
+	return 1
+}
+
+# Homebrew is the macOS stand-in for apt-get. Installed with its official script
+# (asks for the sudo password, pulls the Xcode Command Line Tools: clang, make, git).
+# Idempotent: a no-op when brew is already there.
+ensure_homebrew() {
+	load_brew_env && return 0
+	echo "Installing Homebrew"
+	/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+	load_brew_env
+}
+
+# The apt-get package list, mapped to Homebrew formulae. Linux-only packages are
+# left out and listed by print_macos_gaps. php ships gd, mbstring, xml, intl, curl
+# and mysql built in; bash is the bash 5 the bashrc needs (macOS ships 3.2).
+install_brew_packages() {
+	brew update
+	brew upgrade
+	brew install \
+		vim git git-lfs git-filter-repo gitleaks pkgconf shellcheck gh \
+		curl gnupg lftp inetutils \
+		unzip tree tmux fzf dtach \
+		node python pipx php \
+		mariadb imagemagick \
+		ffmpeg weasyprint poppler qpdf webp libavif \
+		bash
+}
+
+# Start a Homebrew service at login, like systemctl enable --now. Skipped when
+# already started, so a re-run never restarts a running database or VM.
+start_brew_service() {
+	local status
+	status="$(brew services list | awk -v name="$1" '$1 == name { print $2 }')"
+	if [ "$status" = "started" ]; then
+		echo "$1 service already started — skipping"
+		return 0
+	fi
+	brew services start "$1"
+}
+
+# Docker on macOS: the docker CLI talks to a Linux VM run by colima (free, no GUI,
+# no Docker Desktop licence). compose and buildx are CLI plugins that brew installs
+# outside Docker's search path, hence cliPluginsExtraDirs. An existing
+# ~/.docker/config.json is never rewritten: a hint is printed instead.
+install_colima_docker() {
+	local config="$HOME/.docker/config.json"
+	local plugins
+	plugins="$(brew --prefix)/lib/docker/cli-plugins"
+	brew install colima docker docker-compose docker-buildx
+	if [ ! -f "$config" ]; then
+		mkdir -p "$HOME/.docker"
+		printf '{\n  "cliPluginsExtraDirs": ["%s"]\n}\n' "$plugins" > "$config"
+	elif ! grep -qF "$plugins" "$config"; then
+		echo "Add \"cliPluginsExtraDirs\": [\"$plugins\"] to $config for 'docker compose'" >&2
+	fi
+	start_brew_service colima
+}
+
+# macOS login shell: bash (brew's bash 5 + bashrc-osx) or zsh (oh-my-zsh +
+# zshrc-osx). MACOS_SHELL=bash|zsh answers in advance; with no terminal attached
+# and no answer, bash. Prints the choice on stdout (the question goes to stderr).
+choose_macos_shell() {
+	local answer="${MACOS_SHELL:-}"
+	if [ -z "$answer" ] && [ -t 0 ]; then
+		read -rp "Login shell on macOS: bash or zsh (oh-my-zsh)? [bash] " answer || true
+	fi
+	case "$answer" in
+		zsh) echo zsh ;;
+		bash|"") echo bash ;;
+		*) echo "Unknown shell '$answer' — using bash" >&2; echo bash ;;
+	esac
+}
+
+# Make $1 the login shell. /etc/shells must list it before chsh accepts it.
+# chsh asks for the account password; a failure only prints a hint. Idempotent.
+set_login_shell() {
+	local target="$1" current
+	if ! grep -qxF "$target" /etc/shells; then
+		echo "$target" | sudo tee -a /etc/shells >/dev/null
+	fi
+	current="$(dscl . -read "/Users/$USER" UserShell | awk '{ print $2 }')"
+	if [ "$current" = "$target" ]; then
+		echo "Login shell already $target — skipping"
+		return 0
+	fi
+	chsh -s "$target" || echo "chsh failed — run: chsh -s $target" >&2
+}
+
+# oh-my-zsh with its official script, unattended: no chsh (set_login_shell does
+# it), no zsh launched mid-install, ~/.zshrc left alone (deploy_zsh_config owns
+# it). Idempotent: skipped when ~/.oh-my-zsh exists.
+install_oh_my_zsh() {
+	if [ -d "$HOME/.oh-my-zsh" ]; then
+		echo "oh-my-zsh already installed — skipping"
+		return 0
+	fi
+	echo "Installing oh-my-zsh"
+	KEEP_ZSHRC=yes sh -c \
+		"$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" \
+		"" --unattended
+}
+
+# Deploy zshrc-osx to ~/.zshrc and the bchanot prompt theme into oh-my-zsh's
+# custom themes. A ~/.zshrc that differs from the repo's is kept as
+# ~/.zshrc.backup-<date>, not in ~/Oldconfig: that dir is wiped on every run, so
+# a second run would destroy the original (and its nvm/bun lines).
+deploy_zsh_config() {
+	local themes="$HOME/.oh-my-zsh/custom/themes"
+	local backup
+	backup="$HOME/.zshrc.backup-$(date +%Y%m%d-%H%M%S)"
+	if [ -e "$HOME/.zshrc" ] && ! cmp -s "$HOME/.zshrc" "$SCRIPT_DIR/zsh/zshrc-osx"; then
+		echo "Saving the current ~/.zshrc to $backup"
+		mv "$HOME/.zshrc" "$backup"
+	fi
+	echo "Deploying zsh/zshrc-osx + bchanot theme"
+	cp "$SCRIPT_DIR/zsh/zshrc-osx" "$HOME/.zshrc"
+	mkdir -p "$themes"
+	cp "$SCRIPT_DIR/zsh/bchanot.zsh-theme" "$themes/"
+}
+
+# The chosen macOS shell: zsh gets oh-my-zsh + its config; bash needs brew's
+# bash 5 (macOS ships 3.2, too old for the bashrc). Either way it becomes the
+# login shell, so new terminals load the matching config.
+setup_macos_shell() {
+	if [ "$1" = zsh ]; then
+		install_oh_my_zsh
+		deploy_zsh_config
+		set_login_shell /bin/zsh
+	else
+		set_login_shell "$(brew --prefix)/bin/bash"
+	fi
+}
+
+# macOS terminals open LOGIN shells, which read ~/.bash_profile and never ~/.bashrc.
+# Appends one line sourcing ~/.bashrc. Idempotent: skipped when already present.
+wire_bash_profile() {
+	local profile="$HOME/.bash_profile"
+	# shellcheck disable=SC2016  # $HOME must expand when the profile runs, not now.
+	local line='[ -f "$HOME/.bashrc" ] && . "$HOME/.bashrc"'
+	grep -qxF "$line" "$profile" 2>/dev/null && return 0
+	echo "Wiring ~/.bash_profile to source ~/.bashrc"
+	printf '\n# Load the interactive bash config (deployed by install.sh).\n%s\n' \
+		"$line" >> "$profile"
+}
+
+# What the Linux install sets up that this macOS run did not, and why.
+print_macos_gaps() {
+	cat <<'EOF'
+
+Not installed on macOS (compared with the Linux install):
+  - gcc, make          Apple clang + make come with the Xcode Command Line Tools
+                       (`gcc` runs clang). Real GCC: brew install gcc (gcc-15).
+  - valgrind           not supported on macOS arm64. Use `leaks` or -fsanitize=address.
+  - dkms               Linux kernel modules, no macOS equivalent.
+  - net-tools          ifconfig / netstat / route are built into macOS.
+  - openssh-server     built in, off by default: System Settings > General >
+                       Sharing > Remote Login.
+  - cifs-utils         SMB mounts are built in: mount_smbfs, or Finder Cmd-K.
+  - ca-certificates, apt-transport-https   apt plumbing, not needed.
+  - php-imagick        not bundled with brew php: pecl install imagick.
+  - ubuntu-desktop-minimal + RDP (gnome-remote-desktop)   use Screen Sharing:
+                       System Settings > General > Sharing > Screen Sharing.
+  - NVIDIA driver      no NVIDIA GPU support on macOS.
+  - disk-usage login warning (/etc/profile.d)   Linux-only (GNU df).
+  - cloudpex NAS mount helper   Linux-only (cifs-utils).
+  - fail2ban, unattended-upgrades, sshd hardening drop-in   Linux security baseline.
+                       macOS: enable automatic updates in System Settings >
+                       General > Software Update.
+  - /tmp on disk + SSH memory guard offers   systemd-only.
+Replaced: Docker engine -> colima VM + docker CLI; code-server and mariadb run
+as brew services instead of systemd units.
+EOF
+}
+
+# System packages: apt-get on Debian/Ubuntu, Homebrew on macOS.
 if command -v apt-get >/dev/null 2>&1; then
 	sudo apt-get update
 	sudo apt-get upgrade -y
@@ -320,8 +505,21 @@ if command -v apt-get >/dev/null 2>&1; then
 	install_fail2ban
 	install_unattended_upgrades
 	harden_sshd
+elif [ "$(uname -s)" = "Darwin" ]; then
+	# Asked first, so the long brew steps below can run unattended.
+	macos_shell="$(choose_macos_shell)"
+	echo "macOS login shell: $macos_shell"
+
+	ensure_homebrew
+	install_brew_packages
+
+	# Docker (colima VM), then code-server and MariaDB as login services.
+	install_colima_docker
+	brew install code-server
+	start_brew_service code-server
+	start_brew_service mariadb
 else
-	echo "apt-get not found — skipping system packages (install vim/git manually)."
+	echo "Neither apt-get nor macOS — skipping system packages (install vim/git manually)."
 fi
 
 # Back up any existing config before overwriting (re-runnable).
@@ -347,7 +545,7 @@ git clone --quiet https://github.com/preservim/nerdtree "$HOME/.vim/bundle/nerdt
 
 # Deploy tracked vim files: vimrc, pathogen loader, molokai colorscheme.
 echo "Deploying vim config"
-cp -rupv "$SCRIPT_DIR"/vim/* "$HOME/.vim/"
+cp -Rpv "$SCRIPT_DIR"/vim/* "$HOME/.vim/"
 ln -sf "$HOME/.vim/vimrc" "$HOME/.vimrc"
 
 # Deploy the bashrc matching the detected OS.
@@ -385,6 +583,20 @@ if command -v apt-get >/dev/null 2>&1; then
 	offer_ssh_memory_guard
 fi
 
-echo "Done. Restart your shell or run: source ~/.bashrc"
-echo "If you use zsh, switch to bash to enjoy these settings =)"
-echo "Note: the deployed bashrc puts ~/.local/bin on PATH — re-login or run: source ~/.bashrc"
+# macOS: login shells skip ~/.bashrc unless ~/.bash_profile sources it (kept even
+# with zsh, so `bash` stays usable); set up the chosen shell, then report what the
+# Linux install has that this one does not.
+if [ "$(uname -s)" = "Darwin" ]; then
+	wire_bash_profile
+	setup_macos_shell "${macos_shell:-bash}"
+	print_macos_gaps
+fi
+
+if [ "${macos_shell:-bash}" = zsh ]; then
+	echo "Done. Open a new terminal or run: exec zsh"
+	echo "Machine-specific zsh lines (nvm, bun...) go in ~/.zshrc.local"
+else
+	echo "Done. Restart your shell or run: source ~/.bashrc"
+	echo "If you use zsh, switch to bash to enjoy these settings =)"
+	echo "Note: the deployed bashrc puts ~/.local/bin on PATH — re-login or run: source ~/.bashrc"
+fi
