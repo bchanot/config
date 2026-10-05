@@ -16,7 +16,7 @@ curl -fsSL https://git.bchanot.fr/bchanot/config/raw/branch/master/remote-instal
 
 | Path                 | Purpose                                                        |
 | -------------------- | -------------------------------------------------------------- |
-| `install.sh`         | Installs apt packages + Docker + code-server + RDP (gnome-remote-desktop), backs up old config, deploys vim + bashrc (OS-detected), installs CLI scripts, pipx tools, a low-disk login warning and the `cloudpex` NAS mount helper; ends by offering two system changes (`/tmp` on disk, SSH memory guard). |
+| `install.sh`         | Linux: installs apt packages + Docker + code-server + RDP (gnome-remote-desktop), backs up old config, deploys vim + bashrc (OS-detected), installs CLI scripts, pipx tools, a low-disk login warning and the `cloudpex` NAS mount helper; ends by offering two system changes (`/tmp` on disk, SSH memory guard). macOS: same tooling through Homebrew (see [macOS](#macos)), then prints what was not installed compared with Linux. |
 | `cloudpex/`          | On-demand SMB mount of a NAS share (`cloudpex` command + its installer). Site values (host, share, SMB user, mount point, SMB version) are prompted at install and stored in `/etc/cloudpex.conf`, never in the script. French README inside. |
 | `etc/tmpfiles.d/tmp.conf` | Cleanup rules for a disk-backed `/tmp` (wiped at boot, 10-day purge). Deployed by the `/tmp` on disk offer. |
 | `etc/systemd/ssh.service.d/override.conf` | `ssh.service` drop-in: sshd exempt from the OOM killer + memory reclaim protection. Deployed by the SSH memory guard offer. |
@@ -28,7 +28,9 @@ curl -fsSL https://git.bchanot.fr/bchanot/config/raw/branch/master/remote-instal
 | `vim/autoload/`      | `pathogen.vim` plugin loader (committed).                      |
 | `vim/colors/`        | `molokai.vim` colorscheme (committed).                         |
 | `bash/bashrc-linux`  | bashrc for desktop Linux (git-aware prompt + command timer).   |
-| `bash/bashrc-osx`    | bashrc for macOS.                                              |
+| `bash/bashrc-osx`    | bashrc for macOS: `bashrc-linux` adapted (Homebrew on `PATH`, BSD `ls -G`, bash 5 clock for the timer, `cc` without `systemd-run`). |
+| `zsh/zshrc-osx`      | zshrc for macOS when zsh is chosen: oh-my-zsh + the same env, aliases and dtach menu as `bashrc-osx`. Loads `~/.zshrc.local` for machine-specific lines. |
+| `zsh/bchanot.zsh-theme` | oh-my-zsh theme reproducing the bash prompt: `✔ (12ms) user [ ~/dir ] [branch -*+] >`. |
 | `bin/dt`             | dtach session manager for claude-in-dtach sessions.            |
 | `bin/dtach-router`   | Dashboard to resume dtach sessions, shown at the start of every interactive shell (wired into `~/.bashrc` by the installer). |
 | `bin/claude-provider`| Switch Claude Code between Anthropic and OpenRouter.           |
@@ -57,14 +59,14 @@ No argument — the OS is auto-detected.
 
 What it does:
 
-1. On Debian/Ubuntu, installs a set of CLI/dev packages via `apt-get` (see below). Skipped automatically where `apt-get` is absent (macOS).
+1. On Debian/Ubuntu, installs a set of CLI/dev packages via `apt-get` (see below). On macOS, Homebrew does it instead: see [macOS](#macos).
 2. Sets up Docker's official apt repo (Ubuntu) and installs the engine + compose plugin — skipped if `docker` is already present.
 3. Moves any existing `~/.vim`, `~/.vimrc`, `~/.bashrc`, `~/.Sublivim` to `~/Oldconfig`.
 4. Clones the `syntastic` and `nerdtree` vim plugins into `~/.vim/bundle/`.
 5. Copies the tracked vim files into `~/.vim` and symlinks `~/.vimrc`.
 6. Picks the bashrc by OS: macOS → `bashrc-osx` (falls back to `bashrc-linux` if missing), everything else → `bashrc-linux`. Copies it to `~/.bashrc`.
 7. Installs Python CLIs via `pipx` (`PyMuPDF` → `pymupdf`, `Markdown` → `markdown_py`) — skipped if `pipx` is absent.
-8. Copies the `bin/` scripts (`dt`, `dtach-router`, `claude-provider`) into `~/.local/bin`. The dtach session-resume menu ships in the deployed `bashrc-linux`, so every interactive shell offers it — including VS Code Remote-SSH terminals, which are non-login and never read `~/.profile`. The installer also strips any older dtach block left in `~/.profile` so a plain SSH login doesn't prompt twice.
+8. Copies the `bin/` scripts (`dt`, `dtach-router`, `claude-provider`) into `~/.local/bin`. The dtach session-resume menu ships in the deployed bashrc (both OSes), so every interactive shell offers it — including VS Code Remote-SSH terminals, which are non-login and never read `~/.profile`. The installer also strips any older dtach block left in `~/.profile` so a plain SSH login doesn't prompt twice.
 9. On Linux, installs `etc/profile.d/disk-usage-warning.sh` to `/etc/profile.d/` (needs `sudo`) so each login warns when `/` or `/home` cross 85% usage.
 10. On Linux, installs **code-server** (VS Code in the browser) via its vendor script — skipped if already present — and enables the `code-server@$USER` systemd service.
 11. On Linux, installs **`ubuntu-desktop-minimal`** (GDM + GNOME Shell, ~1.5 GB): the RDP remote login below hands out a GNOME session, which a bare server install does not have. Then sets up **RDP remote login** via `gnome-remote-desktop` (Wayland-native): installs the daemon + `openssl`, generates a self-signed TLS cert once, and prompts interactively for shared "gate" credentials (skipped when no terminal is attached, or already set). Disables `xrdp` if present; opens UFW port `3389` only when UFW is already active. Finally, when `lspci` sees an NVIDIA GPU, runs `ubuntu-drivers install` to put on the driver the distro recommends for the card (no version pinned; loads at the next reboot). Skipped on machines without an NVIDIA GPU.
@@ -90,7 +92,20 @@ What it does:
 
 The script is re-runnable: each run re-backs up to `~/Oldconfig` (overwriting the previous backup), re-clones plugins, skips Docker if already installed, and re-deploys the `bin/` scripts.
 
-> Notes: the package list is Debian/Ubuntu-specific, and the Docker repo step assumes **Ubuntu**. On macOS the whole `apt-get` block is skipped — install `vim`/`git`/toolchain via Homebrew yourself.
+> Note: the Docker repo step assumes **Ubuntu**.
+
+### macOS
+
+The same `./install.sh` detects macOS and replaces `apt-get` with Homebrew. It first asks which login shell you want, **bash** or **zsh** (`[bash]` by default; answer in advance with `MACOS_SHELL=zsh ./install.sh`, and with no terminal attached it picks bash):
+
+1. Installs Homebrew with its official script when `brew` is missing (this also pulls the Xcode Command Line Tools: clang, make, git), then `brew update` + `brew upgrade`.
+2. Installs the apt list mapped to formulae: `vim git git-lfs git-filter-repo gitleaks pkgconf shellcheck gh curl gnupg lftp inetutils unzip tree tmux fzf dtach node python pipx php mariadb imagemagick ffmpeg weasyprint poppler qpdf webp libavif bash`. Brew's `php` already ships gd, mbstring, xml, intl, curl and mysql.
+3. Docker: `colima` (the Linux VM) + `docker docker-compose docker-buildx`. Writes `~/.docker/config.json` with `cliPluginsExtraDirs` so `docker compose` works, only when that file does not exist yet (otherwise prints the line to add).
+4. Starts `colima`, `code-server` and `mariadb` as `brew services` (the `systemctl enable --now` equivalent), skipping any already started.
+5. Deploys `bashrc-osx`, then appends one line to `~/.bash_profile` that sources `~/.bashrc`: macOS terminals open login shells, which never read `~/.bashrc` on their own. Done for both choices, so `bash` stays usable.
+6. **bash** chosen: makes brew's bash 5 the login shell (adds it to `/etc/shells` with `sudo`, then `chsh`, which asks for your password). macOS ships bash 3.2, too old for the bashrc.
+   **zsh** chosen: installs oh-my-zsh with its official script (unattended, skipped if `~/.oh-my-zsh` exists), deploys `zsh/zshrc-osx` to `~/.zshrc` and the `bchanot` theme to `~/.oh-my-zsh/custom/themes/`, then makes `/bin/zsh` the login shell. An existing `~/.zshrc` that differs from the repo's is saved as `~/.zshrc.backup-<date>` (outside `~/Oldconfig`, which every run wipes). Move your machine-specific lines (nvm, bun, tokens) into `~/.zshrc.local`: the deployed zshrc loads it.
+7. Ends with the list of what the Linux install has and this one does not: `gcc` (Apple clang answers to `gcc`), `valgrind`, `dkms`, `net-tools`, `openssh-server` and the RDP desktop (both built into macOS, switched on in System Settings > Sharing), `cifs-utils`, `php-imagick`, the NVIDIA driver, the disk-usage warning, `cloudpex`, the security baseline and the two end-of-install offers.
 
 ### CLI scripts (`bin/`)
 
@@ -107,8 +122,8 @@ Deployed to `~/.local/bin` (the deployed bashrc adds this dir to `PATH`):
 ## Requirements
 
 - `bash`, `git`
-- Debian/Ubuntu `apt-get` for the package step (optional elsewhere)
-- A `bash` login shell (zsh users: switch to bash for these prompts to apply)
+- Debian/Ubuntu `apt-get`, or macOS (Homebrew is installed if missing)
+- A `bash` login shell on Linux (zsh users switch to bash for these prompts to apply). On macOS the installer sets bash or zsh, your choice
 
 ## License
 
