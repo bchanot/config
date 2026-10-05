@@ -69,3 +69,24 @@ Branch: feature/apt-packages (off develop). Source: apt-mark showmanual + /var/l
 - [x] install_nvidia_driver(): lspci vendor 10de gate + ubuntu-drivers install (approved: no version pin)
 - [x] README steps 11 + packages; shellcheck + bash -n; stub run of the NVIDIA helper
 - [x] commit on the feature branch. No finish without explicit signal.
+
+## Feature — macOS support, parity with Linux minus apt (2026-10-05)
+Branch: feature/macos-support (off develop). User choices: Docker = colima + CLI; login shell → brew bash 5.
+- [x] install.sh: Darwin block — ensure Homebrew, brew update/upgrade, brew formula list mirroring apt list
+- [x] install.sh: colima + docker CLI (compose/buildx plugin dir), code-server + mariadb via brew services
+- [x] install.sh: brew bash → /etc/shells + chsh; ~/.bash_profile sources ~/.bashrc (Terminal = login shell)
+- [x] install.sh: `cp -rupv` → `cp -Rpv` (BSD cp has no -u; target dir is fresh anyway)
+- [x] install.sh: end-of-run report of Linux items not installed on macOS
+- [x] bash/bashrc-osx: mirror bashrc-linux (ls -G, brew shellenv, EPOCHREALTIME timer, dtach_claude w/o systemd-run)
+- [x] bin/dt: portable _cwd_of (lsof) + _starttime_of (BSD date), help sed -E
+- [x] README + CLAUDE.md macOS section
+- [x] shellcheck + bash -n; runtime test bashrc-osx + dt on this Mac; stub run of Darwin block
+
+## Feature — macOS: choose zsh (oh-my-zsh) or bash as login shell (2026-10-05)
+Same branch. Prompt at start of Darwin block (MACOS_SHELL=bash|zsh env overrides, no TTY → bash).
+- [x] zsh/zshrc-osx: brew env, PATH, history, GCC_COLORS, VIUSER, cc/d + dtach-router, oh-my-zsh, ~/.zshrc.local hook
+- [x] zsh/bchanot.zsh-theme: same prompt as bashrc (✔/✘ + timer, user [ cwd ], git [branch -*+], root red)
+- [x] install.sh: choose_macos_shell, install_oh_my_zsh (unattended, keep zshrc), deploy_zsh_config (backup → Oldconfig)
+- [x] install.sh: use_brew_bash_login_shell → set_login_shell <path>, called at end with chosen shell
+- [x] README + CLAUDE.md
+- [x] shellcheck/bash -n/zsh -n; runtime: theme in zsh (prompt render, timer, git bits), dtach-router sourced in zsh; harness both choices

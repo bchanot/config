@@ -28,12 +28,22 @@ _pids_for_socket() {
   pgrep -f -- "dtach -[cnAN] $sock" 2>/dev/null | sort -u
 }
 
-_cwd_of() { readlink -f "/proc/$1/cwd" 2>/dev/null; }
+# Dossier courant du process : /proc sur Linux, lsof sur macOS (pas de /proc).
+_cwd_of() {
+  if [ -d /proc ]; then
+    readlink -f "/proc/$1/cwd" 2>/dev/null
+  else
+    lsof -a -p "$1" -d cwd -Fn 2>/dev/null | sed -n 's/^n//p'
+  fi
+}
 
 # Heure de demarrage REELLE du process (fiable, immuable), en epoch.
+# date -d = GNU (Linux), date -j -f = BSD (macOS). Locale C : format lstart stable.
 _starttime_of() {
-  local ls; ls=$(ps -o lstart= -p "$1" 2>/dev/null) || return
-  [ -n "$ls" ] && date -d "$ls" +%s 2>/dev/null
+  local ls; ls=$(LC_ALL=C ps -o lstart= -p "$1" 2>/dev/null) || return
+  [ -n "$ls" ] || return
+  LC_ALL=C date -d "$ls" +%s 2>/dev/null \
+    || LC_ALL=C date -j -f '%a %b %e %T %Y' "$ls" +%s 2>/dev/null
 }
 
 _age() {
@@ -52,6 +62,8 @@ _age() {
 emit_raw() {
   shopt -s nullglob
   local sock name pids master cwd start
+  # Tilde via variable : "\~" en remplacement reste "\~" sous bash 3.2 (macOS).
+  local tilde='~'
   for sock in "$DTDIR"/*; do
     [ -S "$sock" ] || continue
     name=$(basename "$sock")
@@ -61,7 +73,7 @@ emit_raw() {
     cwd=$(_cwd_of "$master");        cwd="${cwd:-?}"
     start=$(_starttime_of "$master"); start="${start:-$now}"
     # colonnes : NOM(cache pour fzf) TAB DOSSIER TAB AGE
-    printf '%s\t%s\t%s\n' "$name" "${cwd/#$HOME/\~}" "$(_age "$start")"
+    printf '%s\t%s\t%s\n' "$name" "${cwd/#$HOME/$tilde}" "$(_age "$start")"
   done
 }
 
@@ -99,6 +111,6 @@ case "${1:-}" in
   kill)  shift; cmd_kill "$@" ;;
   sock)  shift; cmd_sock "$@" ;;
   --raw) emit_raw ;;
-  ""|-h|--help) sed -n '2,18p' "$0" | sed 's/^# \?//' ;;
-  *) echo "Commande inconnue: $1"; sed -n '2,18p' "$0" | sed 's/^# \?//'; exit 1 ;;
+  ""|-h|--help) sed -n '2,18p' "$0" | sed -E 's/^# ?//' ;;
+  *) echo "Commande inconnue: $1"; sed -n '2,18p' "$0" | sed -E 's/^# ?//'; exit 1 ;;
 esac
