@@ -50,3 +50,37 @@ menu. Fix: source dtach-router from bashrc-linux (every interactive shell); inst
 unwire_dtach_profile() strips stale ~/.profile block (avoids double-prompt on plain SSH). User chose simplest
 (per-tab) over once-per-connection sentinel. shellcheck install.sh CLEAN, bash -n OK, strip proven idempotent
 on .profile copy. BDR-009 (supersedes BDR-007) + LRN-008. Live needs ./install.sh re-run.
+
+## 2026-09-22 — /tmp on disk + SSH OOM guard + cloudpex conf
+User: swap for /tmp? keep RAM for ssh, old-server rules, cloudpex README+installer. Found /tmp = tmpfs 50% RAM
+→ swap rejected, mask tmp.mount offer (BDR-010). Old rules in NAS RECOVERY/40-systeme: ssh drop-in + earlyoom →
+end-of-install offers (BDR-011). cloudpex tracked; site values → /etc/cloudpex.conf prompted by installer
+(BDR-012). shellcheck/bash -n CLEAN, stub harnesses (LRN-011; EVAL-002 open until live apply). Reconciled
+main→develop (a210d01 dtach was main-only), feature finished via lib → develop 836bb67. Not applied live.
+Flagged: secrets in NAS transfert/root (BLK-005), remote-install.sh BRANCH=master stale vs main, gitea-deploy/
+untracked, remote feature branch left on origin (lib deletes local only).
+Later same day: security baseline always-on in install.sh (fail2ban all-ports + RFC1918 ignore, unattended-
+upgrades file, sshd limits drop-in sshd -t gated) on feature/security-baseline (BDR-013, LRN-012: old jail
+banned 22 not 337). auditd + ufw declined. shellcheck/bash -n CLEAN, stub harness incl. sshd -t reject path,
+configparser + apt-config checks. Branch pushed, NOT finished (no merge signal). Live apply = user runbook.
+Update: user said merge → feature/security-baseline finished via lib, develop a6c416e pushed.
+Cleanup: user asked all-in-develop + delete branches. Hooks refresh committed (a42e8f6). All 3 remote feature
+branches verified merged; `git push --delete` DENIED by permission layer → user runs it. gitea-deploy/ (untracked
+Gitea server deploy project, 31 files, no secrets) moved to ~/Documents/gitea-deploy, own repo via gitflow init,
+pushed main+develop to git.bchanot.fr (push-to-create worked). deploy.conf gitignored.
+
+## 2026-09-28
+- feature/apt-packages (0bc9e3f, unmerged): install.sh mirrors machine apt set. Diff `apt-mark showmanual` +
+apt history vs script → added gitleaks, web stack (mariadb-server imagemagick php-* unversioned),
+ubuntu-desktop-minimal before RDP, install_nvidia_driver() (lspci 10de gate, `ubuntu-drivers install`, no pin).
+User approved 3 choices (GNOME in, ubuntu-drivers, LAMP unconditional). shellcheck + bash -n + stub run OK.
+- Blocked mid-commit: lib pre-commit ran `gitleaks git --staged`, Ubuntu apt gitleaks = 8.16 (no `git` subcmd,
+exit 1 read as leak). Fixed in claude-config bugfix/gitleaks-protect-fallback (347073a, unmerged): probe
+`gitleaks git --help`, fallback `protect --staged`; T16c symlink-farm PATH. make test 0. Hooks refreshed here (9e49b9d).
+- Note: `gh` in install.sh list but not installed on this box (script not rerun since added).
+
+## 2026-10-05 — macOS support + zsh/bash choice
+Local main 15 commits behind develop → worked off develop. install.sh Darwin branch (Homebrew, colima, brew services,
+gaps report), bashrc-osx = bashrc-linux + macOS deltas, dt portable, zsh option (oh-my-zsh + bchanot theme). Tested:
+shellcheck, bash 3.2/5 + zsh -n, bashrc/zshrc/theme live in shells, dt with real dtach session, stub harness both
+choices. Full install.sh not run on this Mac. BDR-015/016, LRN-014, BLK-007. Merged develop 7d5dabd, not pushed.

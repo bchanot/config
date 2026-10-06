@@ -67,3 +67,44 @@ via `~/.profile` AND directly by non-login interactive shells), NOT `~/.profile`
 (its `~/.profile` fix is valid only for real login shells, not IDE remotes). Deductive tell that pinned it:
 wiring proven correct + target resource (session) proven present, yet menu never fires at startup → the startup
 file is not being sourced → non-login shell. See BDR-009.
+
+## LRN-009 — tmpfs /tmp + agents: two symptoms, one cause; swap is not the fix
+2026-09-22. "RAM overloaded" + "No space left on device" in shells = same root: /tmp tmpfs (RAM). Diagnose
+`findmnt -T /tmp` (FSTYPE tmpfs, SIZE=50% RAM). Swap only pages tmpfs out, cap unchanged. Fix = /tmp on disk
+(mask tmp.mount; it is wanted from `/usr/lib/systemd/system/local-fs.target.wants/`). Gotcha:
+`/etc/tmpfiles.d/X.conf` REPLACES `/usr/lib/tmpfiles.d/X.conf` wholesale → copy the other lines
+(`q /var/tmp 30d`) or they vanish. Validate: `systemd-tmpfiles --dry-run --create <file>`.
+
+## LRN-010 — systemd `$VAR` in ExecStart honours quotes inside EnvironmentFile values
+2026-09-22. `EARLYOOM_ARGS="-m 10 --avoid '^(a|b)$'"` + `ExecStart=… $EARLYOOM_ARGS`: bare `$VAR` = split on
+whitespace, quotes respected then stripped → regex arrives as ONE arg. `${VAR}` = whole value as one arg (wrong
+here). Old-server earlyoom file valid as-is. Env-file syntax check: `sh -n`.
+
+## LRN-011 — verify sudo-bound installer functions with a stub harness
+2026-09-22. Can't run sudo/systemctl here (security rule; permission layer even denied `systemctl is-enabled`).
+Extract functions (`sed -n '/^fn()/,/^}/p'`) into scratch, define `sudo(){ echo "SUDO: $*"; }` + `systemctl`
++ `findmnt` stubs, override `confirm` per scenario, `</dev/null` for no-TTY. Covers every branch, prints exact
+sudo calls, `set -e` behaviour included. Gotcha: `unset -f` on an overridden fn removes it entirely.
+
+## LRN-012 — fail2ban jail must match the real sshd port, or ban all ports
+2026-09-22. Old server: sshd `Port 337`, fail2ban sshd jail with default `port = ssh` (=22) → bans hit port 22
+only, SSH on 337 stayed open to the banned IP. Silent, no error. Fix options: `port = 337` (needs detection /
+templating, drifts if port changes) or `banaction = %(banaction_allports)s` (offender blocked everywhere, port
+irrelevant) — chose allports. Offline checks without fail2ban installed: python `configparser` with
+BasicInterpolation resolves `%(x)s` refs and proves the file parses; apt.conf → `apt-config
+--config-file=<f> dump APT::Periodic`. sshd drop-ins can't be `sshd -t`-tested without root (host keys).
+
+## LRN-013 — distro package lags upstream: probe subcommand before calling it
+2026-09-28. Ubuntu apt gitleaks = 8.16; lib pre-commit hook written for >= 8.19 (`gitleaks git --staged`).
+"unknown command" exit 1 read as a leak → every commit blocked, silently (stderr swallowed). Script calling a
+subcommand born in version N must probe `tool sub --help` and fall back (`protect --staged`). Test faking
+"binary absent" via shorter PATH (`/usr/bin:/bin`) breaks once the binary lives in /usr/bin: symlink farm of
+/usr/bin minus the binary instead. Apply: any tool install.sh pulls from apt while ~/.claude scripts assume
+the upstream release. Fix: claude-config bugfix/gitleaks-protect-fallback.
+
+## LRN-014 — macOS (BSD/bash 3.2) traps for Linux shell scripts
+2026-10-05. `cp -u` absent on BSD cp → `cp -Rp`. BSD `date` no `%N` → bash 5 `$EPOCHREALTIME` (strip `[.,]`, fr
+locale = comma); no `date -d` → `date -j -f '%a %b %e %T %Y'` with `LC_ALL=C ps -o lstart=`. No /proc → cwd via
+`lsof -a -p PID -d cwd -Fn`. bash 3.2 `${x/#$HOME/\~}` keeps backslash → use var `tilde='~'`. BSD sed no `\?` in BRE
+→ `sed -E`. Terminal.app = LOGIN shells → read ~/.bash_profile only → must source ~/.bashrc. `ls --color` → `ls -G`.
+zsh: `status` is read-only special var, don't name locals that. Verify installer fns via stub harness (LRN-011).

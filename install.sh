@@ -27,6 +27,25 @@ install_docker() {
 	sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
 }
 
+# NVIDIA driver: only when an NVIDIA GPU is on the PCI bus (vendor id 10de), so the
+# script stays hardware-agnostic elsewhere. ubuntu-drivers picks the driver the distro
+# recommends for the card (595-open on the RTX 3060 Ti this was written on) instead of
+# pinning a version that ages. Idempotent: a no-op when the recommended driver is in.
+# The driver loads at the next reboot. Ubuntu-only (ubuntu-drivers-common).
+install_nvidia_driver() {
+	if ! command -v ubuntu-drivers >/dev/null 2>&1; then
+		echo "ubuntu-drivers not found — skipping NVIDIA driver" >&2
+		return 0
+	fi
+	if [ -z "$(lspci -d 10de: 2>/dev/null)" ]; then
+		echo "No NVIDIA GPU detected — skipping NVIDIA driver"
+		return 0
+	fi
+	echo "NVIDIA GPU detected — installing the recommended driver"
+	sudo ubuntu-drivers install
+	echo "NVIDIA driver loads at the next reboot."
+}
+
 # RDP "gate" credentials: a shared username/password that unlocks the GDM
 # login screen (each user then logs into GDM with his own account). Required —
 # without it the RDP server rejects every connection (mstsc error 0x904). It is
@@ -133,19 +152,375 @@ unwire_dtach_profile() {
 	' "$profile" > "$profile.tmp" && mv "$profile.tmp" "$profile"
 }
 
-# System packages: Debian/Ubuntu only. Skipped where apt-get is absent (e.g. macOS).
+# NAS helper: deploys the on-demand CloudPex SMB mount command to /usr/local/bin
+# (see cloudpex/README.md). Nothing is mounted and no credential is stored.
+# Linux-only (cifs-utils); the helper's own installer is idempotent.
+install_cloudpex() {
+	echo "Installing the cloudpex mount helper"
+	bash "$SCRIPT_DIR/cloudpex/install.sh"
+}
+
+# fail2ban: bans an IP on every port after repeated SSH failures. The sshd jail
+# reads the journal (works with or without /var/log/auth.log) and bans all ports,
+# so the port sshd listens on does not matter — the previous server's jail only
+# banned port 22 while sshd listened on 337. Private LAN ranges are never banned.
+# nftables is the ban backend. Idempotent: config overwritten, service restarted.
+install_fail2ban() {
+	echo "Installing fail2ban (sshd jail, all-ports ban)"
+	sudo apt-get install -y fail2ban nftables
+	sudo install -D -m 0644 "$SCRIPT_DIR/etc/fail2ban/jail.d/local.conf" \
+		/etc/fail2ban/jail.d/local.conf
+	sudo systemctl enable fail2ban
+	sudo systemctl restart fail2ban
+}
+
+# Automatic security updates: the file dpkg-reconfigure would write, deployed
+# directly so the install stays non-interactive. Idempotent.
+install_unattended_upgrades() {
+	echo "Enabling unattended security upgrades"
+	sudo apt-get install -y unattended-upgrades
+	sudo install -D -m 0644 "$SCRIPT_DIR/etc/apt/apt.conf.d/20auto-upgrades" \
+		/etc/apt/apt.conf.d/20auto-upgrades
+}
+
+# sshd hardening drop-in (PermitRootLogin, MaxAuthTries, LoginGraceTime): only
+# settings that cannot lock anyone out; authentication methods stay untouched.
+# Validated with sshd -t before the reload. A rejected file is removed rather than
+# left in place, so sshd keeps starting on the next boot; the install goes on and
+# the warning tells you.
+harden_sshd() {
+	echo "Deploying sshd hardening drop-in"
+	sudo install -D -m 0644 "$SCRIPT_DIR/etc/ssh/sshd_config.d/20-hardening.conf" \
+		/etc/ssh/sshd_config.d/20-hardening.conf
+	if ! sudo sshd -t; then
+		sudo rm -f /etc/ssh/sshd_config.d/20-hardening.conf
+		echo "sshd rejected 20-hardening.conf — removed, sshd config unchanged" >&2
+		return 0
+	fi
+	sudo systemctl reload ssh
+}
+
+# Yes/no prompt for the optional system changes offered at the end of the install.
+# Declines (returns 1) when no terminal is attached (curl | bash), so an offer is
+# skipped with a hint instead of blocking; re-run ./install.sh from a terminal to
+# get it offered again.
+confirm() {
+	local answer=""
+	if [ ! -t 0 ]; then
+		echo "Skipped (no terminal attached): $1" >&2
+		return 1
+	fi
+	read -rp "$1 [y/N] " answer || true
+	case "$answer" in
+		[yY]|[yY][eE][sS]) return 0 ;;
+		*) return 1 ;;
+	esac
+}
+
+# /tmp on disk instead of the tmpfs Ubuntu mounts by default (RAM-backed, capped at
+# 50% of RAM). Agent runs fill it: that eats half the RAM and, once the cap is hit,
+# every temp-file creation fails with ENOSPC — which is what breaks shells. Masking
+# tmp.mount leaves /tmp on the root filesystem; the tmpfiles rule keeps the tmpfs
+# semantics (wiped at boot, entries older than 10 days purged). Takes effect at the
+# next reboot: a busy /tmp is never unmounted live. Idempotent.
+offer_tmp_on_disk() {
+	if [ "$(systemctl is-enabled tmp.mount 2>/dev/null)" = "masked" ]; then
+		echo "/tmp already on disk (tmp.mount masked) — skipping"
+		return 0
+	fi
+	if [ "$(findmnt -n -o FSTYPE -T /tmp)" != "tmpfs" ]; then
+		echo "/tmp is not a tmpfs — nothing to do"
+		return 0
+	fi
+	confirm "Move /tmp from RAM (tmpfs) to disk? Agents fill it and break shells" || return 0
+	sudo systemctl mask tmp.mount
+	sudo install -D -m 0644 "$SCRIPT_DIR/etc/tmpfiles.d/tmp.conf" /etc/tmpfiles.d/tmp.conf
+	echo "/tmp moves to disk at the next reboot."
+}
+
+# Keep SSH reachable when RAM runs out — the two rules the previous server ran:
+#  - ssh.service drop-in: OOMScoreAdjust=-1000 (the kernel OOM killer never picks
+#    sshd) + MemoryMin=256M (reclaim protection for the daemon's cgroup);
+#  - earlyoom: kills the single largest process (node preferred, sshd/systemd spared)
+#    once free RAM and free swap both drop under 10%, before the box thrashes.
+# MemoryMin covers sshd only: logind puts login sessions in user.slice, so nothing can
+# reserve RAM for a future shell — earlyoom acting in time is the real protection.
+# Idempotent: each piece is skipped when already in place. Restarting ssh keeps the
+# current sessions alive (KillMode=process).
+offer_ssh_memory_guard() {
+	local dropin="/etc/systemd/system/ssh.service.d/override.conf"
+	local ssh_done=0 oom_done=0
+	cmp -s "$SCRIPT_DIR/etc/systemd/ssh.service.d/override.conf" "$dropin" && ssh_done=1
+	if cmp -s "$SCRIPT_DIR/etc/default/earlyoom" /etc/default/earlyoom \
+		&& [ "$(systemctl is-enabled earlyoom 2>/dev/null)" = "enabled" ]; then
+		oom_done=1
+	fi
+	if [ "$ssh_done" = 1 ] && [ "$oom_done" = 1 ]; then
+		echo "SSH memory guard already in place — skipping"
+		return 0
+	fi
+	confirm "Protect SSH under memory pressure (sshd OOM-exempt + earlyoom)?" || return 0
+	if [ "$ssh_done" = 0 ]; then
+		sudo install -D -m 0644 "$SCRIPT_DIR/etc/systemd/ssh.service.d/override.conf" "$dropin"
+		sudo systemctl daemon-reload
+		sudo systemctl restart ssh
+	fi
+	if [ "$oom_done" = 0 ]; then
+		sudo apt-get install -y earlyoom
+		sudo install -m 0644 "$SCRIPT_DIR/etc/default/earlyoom" /etc/default/earlyoom
+		sudo systemctl enable earlyoom
+		sudo systemctl restart earlyoom
+	fi
+}
+
+# Put brew on this script's PATH (Apple Silicon: /opt/homebrew, Intel: /usr/local).
+# Returns 1 when Homebrew is not installed.
+load_brew_env() {
+	local brew_bin
+	for brew_bin in /opt/homebrew/bin/brew /usr/local/bin/brew; do
+		if [ -x "$brew_bin" ]; then
+			eval "$("$brew_bin" shellenv)"
+			return 0
+		fi
+	done
+	return 1
+}
+
+# Homebrew is the macOS stand-in for apt-get. Installed with its official script
+# (asks for the sudo password, pulls the Xcode Command Line Tools: clang, make, git).
+# Idempotent: a no-op when brew is already there.
+ensure_homebrew() {
+	load_brew_env && return 0
+	echo "Installing Homebrew"
+	/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+	load_brew_env
+}
+
+# The apt-get package list, mapped to Homebrew formulae. Linux-only packages are
+# left out and listed by print_macos_gaps. php ships gd, mbstring, xml, intl, curl
+# and mysql built in; bash is the bash 5 the bashrc needs (macOS ships 3.2).
+install_brew_packages() {
+	brew update
+	brew upgrade
+	brew install \
+		vim git git-lfs git-filter-repo gitleaks pkgconf shellcheck gh git-delta \
+		curl gnupg lftp inetutils \
+		unzip tree tmux fzf dtach \
+		node python pipx php \
+		mariadb imagemagick \
+		ffmpeg weasyprint poppler qpdf webp libavif \
+		bash
+}
+
+# Start a Homebrew service at login, like systemctl enable --now. Skipped when
+# already started, so a re-run never restarts a running database or VM.
+start_brew_service() {
+	local status
+	status="$(brew services list | awk -v name="$1" '$1 == name { print $2 }')"
+	if [ "$status" = "started" ]; then
+		echo "$1 service already started — skipping"
+		return 0
+	fi
+	brew services start "$1"
+}
+
+# Docker on macOS: the docker CLI talks to a Linux VM run by colima (free, no GUI,
+# no Docker Desktop licence). compose and buildx are CLI plugins that brew installs
+# outside Docker's search path, hence cliPluginsExtraDirs. An existing
+# ~/.docker/config.json is never rewritten: a hint is printed instead.
+install_colima_docker() {
+	local config="$HOME/.docker/config.json"
+	local plugins
+	plugins="$(brew --prefix)/lib/docker/cli-plugins"
+	brew install colima docker docker-compose docker-buildx
+	if [ ! -f "$config" ]; then
+		mkdir -p "$HOME/.docker"
+		printf '{\n  "cliPluginsExtraDirs": ["%s"]\n}\n' "$plugins" > "$config"
+	elif ! grep -qF "$plugins" "$config"; then
+		echo "Add \"cliPluginsExtraDirs\": [\"$plugins\"] to $config for 'docker compose'" >&2
+	fi
+	start_brew_service colima
+}
+
+# macOS login shell: bash (brew's bash 5 + bashrc-osx) or zsh (oh-my-zsh +
+# zshrc-osx). MACOS_SHELL=bash|zsh answers in advance; with no terminal attached
+# and no answer, bash. Prints the choice on stdout (the question goes to stderr).
+choose_macos_shell() {
+	local answer="${MACOS_SHELL:-}"
+	if [ -z "$answer" ] && [ -t 0 ]; then
+		read -rp "Login shell on macOS: bash or zsh (oh-my-zsh)? [bash] " answer || true
+	fi
+	case "$answer" in
+		zsh) echo zsh ;;
+		bash|"") echo bash ;;
+		*) echo "Unknown shell '$answer' — using bash" >&2; echo bash ;;
+	esac
+}
+
+# Make $1 the login shell. /etc/shells must list it before chsh accepts it.
+# chsh asks for the account password; a failure only prints a hint. Idempotent.
+set_login_shell() {
+	local target="$1" current
+	if ! grep -qxF "$target" /etc/shells; then
+		echo "$target" | sudo tee -a /etc/shells >/dev/null
+	fi
+	# id -un, not $USER: the deployed rc sets USER to the git/vim identity.
+	current="$(dscl . -read "/Users/$(id -un)" UserShell | awk '{ print $2 }')"
+	if [ "$current" = "$target" ]; then
+		echo "Login shell already $target — skipping"
+		return 0
+	fi
+	chsh -s "$target" || echo "chsh failed — run: chsh -s $target" >&2
+}
+
+# oh-my-zsh with its official script, unattended: no chsh (set_login_shell does
+# it), no zsh launched mid-install, ~/.zshrc left alone (deploy_zsh_config owns
+# it). Idempotent: skipped when ~/.oh-my-zsh exists.
+install_oh_my_zsh() {
+	if [ -d "$HOME/.oh-my-zsh" ]; then
+		echo "oh-my-zsh already installed — skipping"
+		return 0
+	fi
+	echo "Installing oh-my-zsh"
+	KEEP_ZSHRC=yes sh -c \
+		"$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" \
+		"" --unattended
+}
+
+# Deploy zshrc-osx to ~/.zshrc and the bchanot prompt theme into oh-my-zsh's
+# custom themes. A ~/.zshrc that differs from the repo's is kept as
+# ~/.zshrc.backup-<date>, not in ~/Oldconfig: that dir is wiped on every run, so
+# a second run would destroy the original (and its nvm/bun lines).
+deploy_zsh_config() {
+	local themes="$HOME/.oh-my-zsh/custom/themes"
+	local backup
+	backup="$HOME/.zshrc.backup-$(date +%Y%m%d-%H%M%S)"
+	if [ -e "$HOME/.zshrc" ] && ! cmp -s "$HOME/.zshrc" "$SCRIPT_DIR/zsh/zshrc-osx"; then
+		echo "Saving the current ~/.zshrc to $backup"
+		mv "$HOME/.zshrc" "$backup"
+	fi
+	echo "Deploying zsh/zshrc-osx + bchanot theme"
+	cp "$SCRIPT_DIR/zsh/zshrc-osx" "$HOME/.zshrc"
+	mkdir -p "$themes"
+	cp "$SCRIPT_DIR/zsh/bchanot.zsh-theme" "$themes/"
+}
+
+# The chosen macOS shell: zsh gets oh-my-zsh + its config; bash needs brew's
+# bash 5 (macOS ships 3.2, too old for the bashrc). Either way it becomes the
+# login shell, so new terminals load the matching config.
+setup_macos_shell() {
+	if [ "$1" = zsh ]; then
+		install_oh_my_zsh
+		deploy_zsh_config
+		set_login_shell /bin/zsh
+	else
+		set_login_shell "$(brew --prefix)/bin/bash"
+	fi
+}
+
+# macOS terminals open LOGIN shells, which read ~/.bash_profile and never ~/.bashrc.
+# Appends one line sourcing ~/.bashrc. Idempotent: skipped when already present.
+wire_bash_profile() {
+	local profile="$HOME/.bash_profile"
+	# shellcheck disable=SC2016  # $HOME must expand when the profile runs, not now.
+	local line='[ -f "$HOME/.bashrc" ] && . "$HOME/.bashrc"'
+	grep -qxF "$line" "$profile" 2>/dev/null && return 0
+	echo "Wiring ~/.bash_profile to source ~/.bashrc"
+	printf '\n# Load the interactive bash config (deployed by install.sh).\n%s\n' \
+		"$line" >> "$profile"
+}
+
+# Value of `export NAME=value` ($1) in the rc file $2, quotes stripped. The last
+# match wins, as when the shell sources it. Empty when absent.
+rc_export_value() {
+	sed -n "s/^export $1=//p" "$2" | tail -n 1 | tr -d "\"'"
+}
+
+# Print the repo gitconfig template with @USER@ and @EMAIL@ replaced by $1 and
+# $2. Bash substitution, so the values need no sed escaping.
+render_gitconfig() {
+	local name="$1" email="$2" line
+	while IFS= read -r line || [ -n "$line" ]; do
+		line="${line//@USER@/$name}"
+		line="${line//@EMAIL@/$email}"
+		printf '%s\n' "$line"
+	done < "$SCRIPT_DIR/gitconfig"
+}
+
+# Install the user-scope ~/.gitconfig (a repo's own .git/config still wins).
+# The identity is read from the USER/EMAIL exports of the deployed rc ($1), so
+# git and the shell agree. A ~/.gitconfig that differs is kept as
+# ~/.gitconfig.backup-<date>, outside ~/Oldconfig which every run wipes.
+# Idempotent: an identical ~/.gitconfig is left alone.
+deploy_gitconfig() {
+	local rc="$1" name email rendered backup
+	name="$(rc_export_value USER "$rc")"
+	email="$(rc_export_value EMAIL "$rc")"
+	if [ -z "$name" ] || [ -z "$email" ]; then
+		echo "USER/EMAIL not exported by $rc — skipping ~/.gitconfig" >&2
+		return 0
+	fi
+	rendered="$(render_gitconfig "$name" "$email")"
+	if printf '%s\n' "$rendered" | cmp -s - "$HOME/.gitconfig"; then
+		echo "$HOME/.gitconfig already up to date — skipping"
+		return 0
+	fi
+	if [ -e "$HOME/.gitconfig" ]; then
+		backup="$HOME/.gitconfig.backup-$(date +%Y%m%d-%H%M%S)"
+		echo "Saving the current ~/.gitconfig to $backup"
+		mv "$HOME/.gitconfig" "$backup"
+	fi
+	echo "Deploying gitconfig to ~/.gitconfig ($name <$email>)"
+	printf '%s\n' "$rendered" > "$HOME/.gitconfig"
+}
+
+# What the Linux install sets up that this macOS run did not, and why.
+print_macos_gaps() {
+	cat <<'EOF'
+
+Not installed on macOS (compared with the Linux install):
+  - gcc, make          Apple clang + make come with the Xcode Command Line Tools
+                       (`gcc` runs clang). Real GCC: brew install gcc (gcc-15).
+  - valgrind           not supported on macOS arm64. Use `leaks` or -fsanitize=address.
+  - dkms               Linux kernel modules, no macOS equivalent.
+  - net-tools          ifconfig / netstat / route are built into macOS.
+  - openssh-server     built in, off by default: System Settings > General >
+                       Sharing > Remote Login.
+  - cifs-utils         SMB mounts are built in: mount_smbfs, or Finder Cmd-K.
+  - ca-certificates, apt-transport-https   apt plumbing, not needed.
+  - php-imagick        not bundled with brew php: pecl install imagick.
+  - ubuntu-desktop-minimal + RDP (gnome-remote-desktop)   use Screen Sharing:
+                       System Settings > General > Sharing > Screen Sharing.
+  - NVIDIA driver      no NVIDIA GPU support on macOS.
+  - disk-usage login warning (/etc/profile.d)   Linux-only (GNU df).
+  - cloudpex NAS mount helper   Linux-only (cifs-utils).
+  - fail2ban, unattended-upgrades, sshd hardening drop-in   Linux security baseline.
+                       macOS: enable automatic updates in System Settings >
+                       General > Software Update.
+  - /tmp on disk + SSH memory guard offers   systemd-only.
+Replaced: Docker engine -> colima VM + docker CLI; code-server and mariadb run
+as brew services instead of systemd units.
+EOF
+}
+
+# System packages: apt-get on Debian/Ubuntu, Homebrew on macOS.
 if command -v apt-get >/dev/null 2>&1; then
 	sudo apt-get update
 	sudo apt-get upgrade -y
 
-	# Build + version control + C dev tooling.
+	# Build + version control + C dev tooling (gitleaks backs the pre-commit hook,
+	# git-delta provides `delta`, the pager set in gitconfig).
+	# Web stack: MariaDB + PHP modules for local WordPress/LAMP work; the php-* metapackages
+	# follow the distro's PHP version instead of pinning php8.x-*.
 	sudo apt-get install -y \
-		vim git git-lfs git-filter-repo gcc make pkg-config dkms valgrind shellcheck \
+		vim git git-lfs git-filter-repo gitleaks gcc make pkg-config dkms valgrind shellcheck git-delta \
 		curl gnupg ca-certificates apt-transport-https \
 		unzip tree tmux fzf dtach net-tools \
 		openssh-server cifs-utils lftp ftp \
 		nodejs python3-pip pipx php-cli \
-		ffmpeg weasyprint poppler-utils qpdf webp libavif-bin
+		ffmpeg weasyprint poppler-utils qpdf webp libavif-bin gh \
+		mariadb-server imagemagick \
+		php-mysql php-gd php-imagick php-mbstring php-xml php-intl php-curl
 
 	# Docker (separate repo).
 	install_docker
@@ -154,15 +529,44 @@ if command -v apt-get >/dev/null 2>&1; then
 	if ! command -v code-server >/dev/null 2>&1; then
 		curl -fsSL https://code-server.dev/install.sh | sh
 	fi
-	sudo systemctl enable --now "code-server@$USER"
+	# id -un, not $USER: the deployed bashrc sets USER to the git/vim identity.
+	sudo systemctl enable --now "code-server@$(id -un)"
+
+	# GNOME desktop (GDM + Shell): the RDP remote login below needs a GNOME session
+	# to hand out; a bare server install has none. Ubuntu-only metapackage.
+	sudo apt-get install -y ubuntu-desktop-minimal
 
 	# Remote desktop (gnome-remote-desktop — see the function header for why not xrdp).
 	setup_remote_desktop
 
+	# NVIDIA driver, only when an NVIDIA GPU is present.
+	install_nvidia_driver
+
 	# Low-disk login warning (system-wide profile.d snippet).
 	install_disk_warning
+
+	# On-demand NAS mount helper (cloudpex/).
+	install_cloudpex
+
+	# Security baseline: brute-force bans, automatic security updates, sshd limits.
+	install_fail2ban
+	install_unattended_upgrades
+	harden_sshd
+elif [ "$(uname -s)" = "Darwin" ]; then
+	# Asked first, so the long brew steps below can run unattended.
+	macos_shell="$(choose_macos_shell)"
+	echo "macOS login shell: $macos_shell"
+
+	ensure_homebrew
+	install_brew_packages
+
+	# Docker (colima VM), then code-server and MariaDB as login services.
+	install_colima_docker
+	brew install code-server
+	start_brew_service code-server
+	start_brew_service mariadb
 else
-	echo "apt-get not found — skipping system packages (install vim/git manually)."
+	echo "Neither apt-get nor macOS — skipping system packages (install vim/git manually)."
 fi
 
 # Back up any existing config before overwriting (re-runnable).
@@ -188,7 +592,7 @@ git clone --quiet https://github.com/preservim/nerdtree "$HOME/.vim/bundle/nerdt
 
 # Deploy tracked vim files: vimrc, pathogen loader, molokai colorscheme.
 echo "Deploying vim config"
-cp -rupv "$SCRIPT_DIR"/vim/* "$HOME/.vim/"
+cp -Rpv "$SCRIPT_DIR"/vim/* "$HOME/.vim/"
 ln -sf "$HOME/.vim/vimrc" "$HOME/.vimrc"
 
 # Deploy the bashrc matching the detected OS.
@@ -200,6 +604,9 @@ else
 fi
 echo "Deploying $bashrc"
 cp "$SCRIPT_DIR/$bashrc" "$HOME/.bashrc"
+
+# User-scope git config, identity taken from the bashrc just deployed.
+deploy_gitconfig "$SCRIPT_DIR/$bashrc"
 
 # Python CLIs via pipx (run as the user, never sudo). Skipped if pipx is absent.
 if command -v pipx >/dev/null 2>&1; then
@@ -219,6 +626,27 @@ chmod +x "$HOME"/.local/bin/dt "$HOME"/.local/bin/dtach-router "$HOME"/.local/bi
 # Remove any stale dtach wiring from ~/.profile (the menu now ships in ~/.bashrc; see above).
 unwire_dtach_profile
 
-echo "Done. Restart your shell or run: source ~/.bashrc"
-echo "If you use zsh, switch to bash to enjoy these settings =)"
-echo "Note: the deployed bashrc puts ~/.local/bin on PATH — re-login or run: source ~/.bashrc"
+# Optional system changes, offered last so the base install is complete even when
+# declined. Linux/systemd only. Each prompts [y/N] on a terminal, is skipped otherwise.
+if command -v apt-get >/dev/null 2>&1; then
+	offer_tmp_on_disk
+	offer_ssh_memory_guard
+fi
+
+# macOS: login shells skip ~/.bashrc unless ~/.bash_profile sources it (kept even
+# with zsh, so `bash` stays usable); set up the chosen shell, then report what the
+# Linux install has that this one does not.
+if [ "$(uname -s)" = "Darwin" ]; then
+	wire_bash_profile
+	setup_macos_shell "${macos_shell:-bash}"
+	print_macos_gaps
+fi
+
+if [ "${macos_shell:-bash}" = zsh ]; then
+	echo "Done. Open a new terminal or run: exec zsh"
+	echo "Machine-specific zsh lines (nvm, bun...) go in ~/.zshrc.local"
+else
+	echo "Done. Restart your shell or run: source ~/.bashrc"
+	echo "If you use zsh, switch to bash to enjoy these settings =)"
+	echo "Note: the deployed bashrc puts ~/.local/bin on PATH — re-login or run: source ~/.bashrc"
+fi

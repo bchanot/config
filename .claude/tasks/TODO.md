@@ -25,3 +25,77 @@
 - [ ] Runtime-test install.sh on a clean VM (all 4 targets) — not safe on dev machine
 - [ ] Consider an `uninstall.sh` (restore from ~/Oldconfig)
 - [x] LICENSE if repo ever goes public — done (GPL-3.0, BDR-008, 40c6524)
+
+## Feature — /tmp on disk + SSH OOM guard + cloudpex installer (2026-09-22)
+Branch: feature/tmp-disk-ssh-oom-cloudpex (off develop). Design approved in chat (bounded).
+Root cause: /tmp is tmpfs (50% RAM) → agents fill it → RAM halved + ENOSPC breaks shells. Swap rejected.
+- [x] etc/tmpfiles.d/tmp.conf (D /tmp 10d + q /var/tmp 30d — keep both upstream lines)
+- [x] etc/systemd/ssh.service.d/override.conf (MemoryMin=256M, OOMScoreAdjust=-1000 — old server)
+- [x] etc/default/earlyoom (old server args: -r 60 -m 10 -s 10 --avoid sshd… --prefer node…)
+- [x] install.sh: confirm() TTY-guarded prompt helper
+- [x] install.sh: offer_tmp_on_disk() — mask tmp.mount + tmpfiles rule, reboot notice, idempotent
+- [x] install.sh: offer_ssh_memory_guard() — drop-in + daemon-reload/restart ssh + earlyoom, idempotent
+- [x] install.sh: install_cloudpex() in Linux block; offers at end of script (Linux-gated)
+- [x] cloudpex/install.sh — /usr/local/bin/cloudpex root 0755, /mnt/cloudpex, cifs-utils if missing
+- [x] cloudpex/README.md (FR) — purpose, why on-demand not fstab, usage, install
+- [x] README.md steps 12-14 + table rows; CLAUDE.md layout
+- [x] shellcheck + bash -n (install.sh, cloudpex/install.sh); stub-sudo dry run of the offers
+- [x] commit on feature branch (no gitea-deploy/, no .githooks changes)
+
+## Round 2 — cloudpex config out of script, reconcile main/develop, capitalize, merge (2026-09-22)
+- [x] cloudpex/cloudpex: constants → /etc/cloudpex.conf parsed line by line (never sourced), die if missing
+- [x] cloudpex/install.sh: prompt host/share/user/mnt/vers (regex-validated), keep-existing [Y/n], no-TTY skip
+- [x] cloudpex/README.md + README.md + CLAUDE.md: no site values, describe prompts + conf file
+- [x] registries: BDR-010/011/012, LRN-009/010/011, BLK-005/006, EVAL-002, journal
+- [x] reconcile: merge main (a210d01 dtach) into develop via lib helper
+- [x] gitflow finish feature → develop (explicit user signal: "puis merge")
+- [x] runbook for live apply on this machine
+
+## Feature — security baseline in install.sh (2026-09-22)
+Branch: feature/security-baseline (off develop). Scope approved: fail2ban, unattended-upgrades, sshd hardening. auditd + ufw declined.
+- [x] etc/fail2ban/jail.d/local.conf — sshd jail, backend systemd, allports ban, RFC1918 ignoreip
+- [x] etc/apt/apt.conf.d/20auto-upgrades — Periodic Update-Package-Lists + Unattended-Upgrade = 1
+- [x] etc/ssh/sshd_config.d/20-hardening.conf — PermitRootLogin no, MaxAuthTries 3, LoginGraceTime 20
+- [x] install.sh: install_fail2ban / install_unattended_upgrades / harden_sshd (sshd -t gated), called in Linux block
+- [x] README.md (table, step 13, packages) + CLAUDE.md layout
+- [x] shellcheck + bash -n; stub harness harden_sshd (accept / reject paths); configparser check of jail file
+- [x] commit; registries (BDR-013, LRN-012); runbook. No finish without explicit signal.
+
+## Feature — install.sh mirrors this machine's apt packages (2026-09-28)
+Branch: feature/apt-packages (off develop). Source: apt-mark showmanual + /var/log/apt/history.log diffed against install.sh.
+- [x] gitleaks in the base list (backs the pre-commit hook)
+- [x] web stack group: mariadb-server imagemagick + unversioned php-* modules (approved: base list, not an offer)
+- [x] ubuntu-desktop-minimal before setup_remote_desktop (approved)
+- [x] install_nvidia_driver(): lspci vendor 10de gate + ubuntu-drivers install (approved: no version pin)
+- [x] README steps 11 + packages; shellcheck + bash -n; stub run of the NVIDIA helper
+- [x] commit on the feature branch. No finish without explicit signal.
+
+## Feature — macOS support, parity with Linux minus apt (2026-10-05)
+Branch: feature/macos-support (off develop). User choices: Docker = colima + CLI; login shell → brew bash 5.
+- [x] install.sh: Darwin block — ensure Homebrew, brew update/upgrade, brew formula list mirroring apt list
+- [x] install.sh: colima + docker CLI (compose/buildx plugin dir), code-server + mariadb via brew services
+- [x] install.sh: brew bash → /etc/shells + chsh; ~/.bash_profile sources ~/.bashrc (Terminal = login shell)
+- [x] install.sh: `cp -rupv` → `cp -Rpv` (BSD cp has no -u; target dir is fresh anyway)
+- [x] install.sh: end-of-run report of Linux items not installed on macOS
+- [x] bash/bashrc-osx: mirror bashrc-linux (ls -G, brew shellenv, EPOCHREALTIME timer, dtach_claude w/o systemd-run)
+- [x] bin/dt: portable _cwd_of (lsof) + _starttime_of (BSD date), help sed -E
+- [x] README + CLAUDE.md macOS section
+- [x] shellcheck + bash -n; runtime test bashrc-osx + dt on this Mac; stub run of Darwin block
+
+## Feature — macOS: choose zsh (oh-my-zsh) or bash as login shell (2026-10-05)
+Same branch. Prompt at start of Darwin block (MACOS_SHELL=bash|zsh env overrides, no TTY → bash).
+- [x] zsh/zshrc-osx: brew env, PATH, history, GCC_COLORS, VIUSER, cc/d + dtach-router, oh-my-zsh, ~/.zshrc.local hook
+- [x] zsh/bchanot.zsh-theme: same prompt as bashrc (✔/✘ + timer, user [ cwd ], git [branch -*+], root red)
+- [x] install.sh: choose_macos_shell, install_oh_my_zsh (unattended, keep zshrc), deploy_zsh_config (backup → Oldconfig)
+- [x] install.sh: use_brew_bash_login_shell → set_login_shell <path>, called at end with chosen shell
+- [x] README + CLAUDE.md
+- [x] shellcheck/bash -n/zsh -n; runtime: theme in zsh (prompt render, timer, git bits), dtach-router sourced in zsh; harness both choices
+
+## Feature — user-scope ~/.gitconfig from repo template, VIUSER/VIMAIL → USER/EMAIL (2026-10-06)
+- [x] rc files (bashrc-linux, bashrc-osx, zshrc-osx): `VIUSER`/`VIMAIL` → `USER`/`EMAIL`
+- [x] `gitconfig` template: git never expands `$VAR` → `@USER@`/`@EMAIL@` placeholders, `excludesfile = ~/.gitignore`
+- [x] install.sh `deploy_gitconfig`: values read from deployed bashrc, rendered → ~/.gitconfig, differing old one → ~/.gitconfig.backup-<date>
+- [x] install.sh: `$USER` → `$(id -un)` (dscl, code-server unit): rc now overrides USER with identity
+- [x] README + CLAUDE.md layout
+- [x] Verify: shellcheck, bash -n, render to temp HOME, `git config --file` reads values
+- [x] `git-delta` added to apt + brew lists (gitconfig pager = delta)

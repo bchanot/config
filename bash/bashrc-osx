@@ -1,18 +1,17 @@
+# Homebrew on PATH (Apple Silicon: /opt/homebrew, Intel: /usr/local).
+# Must come first: brew's bash, vim, git, fzf and dtach shadow the system ones.
+for brew_bin in /opt/homebrew/bin/brew /usr/local/bin/brew; do
+	if [ -x "$brew_bin" ]; then
+		eval "$("$brew_bin" shellenv)"
+		break
+	fi
+done
+unset brew_bin
+
 ## Enable color support of ls and also add handy aliases
-# Some colors
+# Some colors (BSD ls: -G instead of GNU --color)
 alias ls='ls -G'
 alias grep='grep --color=auto'
-
-# Some utils aliases
-alias ll='ls -l'
-alias la='ls -A'
-alias rmrf='rm -rf'
-alias gcl='git clone'
-alias vim='vim -p'
-
-# Aliases for executing ~/.script scripts
-alias gitan='sh ~/.script/gitan.sh'
-alias clean='sh ~/.script/clean.sh'
 
 ## Some export
 # colored GCC warnings and errors
@@ -24,9 +23,21 @@ case ":$PATH:" in
 	*) export PATH="$HOME/.local/bin:$PATH" ;;
 esac
 
-# Used for vim header
-export VIUSER=xuser
-export VIMAIL=xuser@student.42.fr
+# Set history size to unlimited
+if [[ $EUID == 0 ]] ; then
+	export HISTSIZE=0
+	export HISTFILESIZE=0
+else
+	export HISTSIZE=-1
+	export HISTFILESIZE=-1
+fi
+
+#export LANG=en_US.UTF-8
+
+
+# Identity for the vim header; install.sh also writes it into ~/.gitconfig
+export USER=bchanot
+export EMAIL=bchanot@gmail.fr
 
 ## Activate and custom bash completion
 #bind 'TAB:menu-complete'
@@ -44,7 +55,38 @@ function parse_git_branch() {
 			echo ""
 	fi
 }
+# BSD date has no %N: use bash 5's microsecond clock, scaled to nanoseconds.
+# Falls back to whole seconds under the system bash 3.2.
+function timer_now {
+    if [ -n "${EPOCHREALTIME:-}" ]; then
+        echo "${EPOCHREALTIME/[.,]/}000"
+    else
+        echo "$(date +%s)000000000"
+    fi
+}
 
+function timer_start {
+    timer_start=${timer_start:-$(timer_now)}
+}
+
+function timer_stop {
+    local delta_us=$((($(timer_now) - $timer_start) / 1000))
+    local us=$((delta_us % 1000))
+    local ms=$(((delta_us / 1000) % 1000))
+    local s=$(((delta_us / 1000000) % 60))
+    local m=$(((delta_us / 60000000) % 60))
+    local h=$((delta_us / 3600000000))
+    # Goal: always show around 3 digits of accuracy
+    if ((h > 0)); then timer_show=${h}h${m}m
+    elif ((m > 0)); then timer_show=${m}m${s}s
+    elif ((s >= 10)); then timer_show=${s}.$((ms / 100))s
+    elif ((s > 0)); then timer_show=${s}.$(printf %03d $ms)s
+    elif ((ms >= 100)); then timer_show=${ms}ms
+    elif ((ms > 0)); then timer_show=${ms}.$((us / 100))ms
+    else timer_show=${us}us
+    fi
+    unset timer_start
+}
 # get current status of git repo
 function parse_git_dirty {
 	status=`git status 2>&1 | tee`
@@ -72,6 +114,35 @@ function parse_git_dirty {
 	fi
 }
 
-export PS1='`if [ $? = 0 ]; then echo "\[\033[01;36m\]✔"; else echo "\[\033[01;31m\]✘"; fi` \[\033[32m\]\w\[\033[34m\]$(parse_git_branch " %s") \[\033[0m\]>\[\033[00m\] '
+function set_prompt {
+	timer_stop
 
+	if [[ $EUID == 0 ]] ; then
+		export PS1='`if [ $? = 0 ]; then echo "\[\033[01;36m\]✔"; else echo "\[\033[01;31m\]✘"; fi` ($timer_show) \[\033[01;31m\]\u [\[\033[00;0m\] \w \[\033[01;31m\]]\[\033[01;34m\]$(parse_git_branch " %s") \[\033[00;00m\]> '
+	else
+		export PS1='`if [ $? = 0 ]; then echo "\[\033[01;36m\]✔"; else echo "\[\033[01;31m\]✘"; fi` ($timer_show) \[\033[01;32m\]\u [\[\033[00;0m\] \w \[\033[01;32m\]]\[\033[01;34m\]$(parse_git_branch " %s") \[\033[00;00m\]> '
+	fi
+}
+
+trap 'timer_start' DEBUG
+PROMPT_COMMAND='set_prompt'
 ## Lancement des commandes au demarrages
+
+# claude-dans-dtach : creer une session (claude tournant dans dtach, detache via Ctrl-\).
+# Usage : cd ~/projets/seo && cc seo   -> session nommee "seo".
+# Pas de systemd sur macOS : dtach est lance directement (pas de slice cgroup).
+dtach_claude() {
+  local name="${1:-claude-$(date +%H%M%S)}"
+  mkdir -p "$HOME/.dtach"
+  dtach -c "$HOME/.dtach/${name}" -e '^\' \
+      bash -c 'set -a; [ -f "$HOME/.claude/.env" ] && . "$HOME/.claude/.env"; set +a; exec claude'
+}
+alias cc='dtach_claude'
+
+# Rappeler a la demande le menu de reprise.
+alias d='source ~/.local/bin/dtach-router'
+
+# Au demarrage d'un shell interactif, proposer de reprendre une session dtach existante
+# (silencieux si aucune). Place ici plutot que dans ~/.profile car les terminaux VS Code
+# Remote-SSH sont non-login et ne lisent pas ~/.profile ; ~/.bashrc, lui, est toujours lu.
+case $- in *i*) [ -x "$HOME/.local/bin/dtach-router" ] && . "$HOME/.local/bin/dtach-router" ;; esac

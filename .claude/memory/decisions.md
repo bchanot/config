@@ -73,3 +73,61 @@ the exact noise BDR-007 avoided, now tolerated for VS Code reliability. Alts rej
 sentinel keyed to `SSH_CONNECTION`/`VSCODE_IPC_HOOK_CLI` in `$XDG_RUNTIME_DIR` — more code, user declined;
 (b) VS Code `terminal.integrated` `args:["-l"]` — not carried by dotfiles, same per-tab firing. Supersedes
 BDR-007. Status: done in repo; live needs `./install.sh` re-run.
+
+## BDR-010 — /tmp on disk (mask tmp.mount), swap rejected
+2026-09-22. Ubuntu 26.04 mounts /tmp tmpfs size=50% RAM (7.4G of 14G here). Agents fill it → RAM halved +
+ENOSPC → shells break. Chose `systemctl mask tmp.mount` + `/etc/tmpfiles.d/tmp.conf` (`D /tmp 10d`, `/var/tmp`
+line kept). Offered [y/N] end of install.sh (`offer_tmp_on_disk`), TTY-guarded, idempotent, effective next
+reboot (never umount live). Alts rejected: (a) add/grow swap — cap + ENOSPC stay, thrash instead of OOM;
+(b) bigger tmpfs `size=` — still RAM; (c) `TMPDIR=/var/tmp` in bashrc — leaky (services, IDE spawns, cron).
+Status: done in repo, live apply = user (EVAL-002).
+
+## BDR-011 — SSH memory guard = old-server rules (ssh drop-in + earlyoom), systemd-oomd untouched
+2026-09-22. Restored from NAS `RECOVERY/40-systeme/etc`: `ssh.service.d/override.conf` (MemoryMin=256M,
+OOMScoreAdjust=-1000) + earlyoom `-r 60 -m 10 -s 10 --avoid '^(sshd|systemd|systemd-logind|dbus-daemon|containerd)$'
+--prefer '^(java|node|pnpm|esbuild)$'`. MemoryMin covers sshd cgroup only (logind puts sessions in user.slice)
+→ real guard = OOMScoreAdjust + earlyoom (kills ONE largest proc, shell survives). systemd-oomd (Ubuntu default
+`ManagedOOMMemoryPressure=kill` 50% on user@.service, kills WHOLE session cgroup) left as-is: zero kills in
+journal (fresh install), unproven as shell-killer. `offer_ssh_memory_guard`, [y/N], idempotent, ssh restart keeps
+sessions (KillMode=process). Alt rejected: drop-in only — kernel/oomd may still kill whole session. Status: done
+in repo, live apply = user.
+
+## BDR-012 — cloudpex site values in /etc/cloudpex.conf, prompted by installer
+2026-09-22. User: no IP/user in script. Chose key=value `/etc/cloudpex.conf` root:root 0600 written by
+`cloudpex/install.sh` prompts (HOST, SHARE, SMB_USER, MNT, SMB_VERS; regex-validated, re-ask on bad input so
+main install.sh never aborts; keep-existing [Y/n]; skipped without TTY). Script parses lines
+(`sed -n s/^KEY=//p`), never sources → no code exec as root from config. Alt rejected: sed placeholders into
+deployed script — config + code mixed, every re-run overwrites values. Status: done in repo.
+
+## BDR-013 — security baseline always-on in install.sh: fail2ban (all-ports), unattended-upgrades, sshd limits
+2026-09-22. User: "fail2ban and the like, systematically". Chose no-prompt Linux-block steps: (1) fail2ban sshd
+jail `backend = systemd` + `banaction = %(banaction_allports)s` → SSH port irrelevant (old server banned 22 while
+sshd on 337, LRN-012); `ignoreip` = loopback + RFC1918 static (no LAN detection; trade-off: compromised LAN host
+never banned); 5/10m/1h from RECOVERY doc 01. (2) `20auto-upgrades` file instead of interactive dpkg-reconfigure.
+(3) sshd drop-in limited to PermitRootLogin/MaxAuthTries/LoginGraceTime, `sshd -t` gated, rejected file removed +
+install continues. Declined by user: auditd rules, ufw whitelist (site-specific ports, lockout risk → would be an
+offer, not systematic). Not included by design: PasswordAuthentication no / AllowUsers / X11Forwarding no
+(lockout or workflow risk). Status: done in repo (feature/security-baseline), live apply = user.
+
+## BDR-014 — install.sh mirrors machine apt set: GNOME + LAMP unconditional, NVIDIA via ubuntu-drivers
+2026-09-28. Source: `apt-mark showmanual` + /var/log/apt/history.log diffed vs script. Added gitleaks, web stack
+(mariadb-server imagemagick php-* unversioned → follows distro PHP), ubuntu-desktop-minimal before RDP setup
+(gnome-remote-desktop needs GDM, bare server had none), `install_nvidia_driver()` = `lspci -d 10de:` gate +
+`ubuntu-drivers install` (distro-recommended, 595-open today). Alternatives rejected: pin nvidia-driver-595-open
+(ages, hardware-bound), LAMP behind confirm() offer (user: base list), GNOME left implicit (RDP fails silently).
+Status: merged to develop. Live rerun of install.sh = user.
+
+## BDR-015 — macOS: Homebrew replaces apt, Docker via colima, login shell bash 5 OR zsh (user choice)
+2026-10-05. install.sh Darwin branch: ensure_homebrew (official script if missing) → brew update/upgrade → apt list
+mapped to formulae. Docker = colima + docker/compose/buildx CLI (`cliPluginsExtraDirs` written only if
+~/.docker/config.json absent). colima/code-server/mariadb = `brew services` (skip if started). Shell asked first
+(`MACOS_SHELL` presets, no TTY → bash): bash → brew bash 5 in /etc/shells + chsh (macOS bash 3.2 too old: no
+EPOCHREALTIME, HISTSIZE=-1); zsh → oh-my-zsh unattended + zsh/zshrc-osx + bchanot.zsh-theme (bash prompt port), chsh
+/bin/zsh. End: print_macos_gaps lists Linux-only items skipped. Alts rejected: Docker Desktop (GUI, licence), no
+Docker; staying on zsh w/o config. Status: merged develop 7d5dabd.
+
+## BDR-016 — ~/.zshrc backed up to ~/.zshrc.backup-<date>, not ~/Oldconfig
+2026-10-05. ~/Oldconfig is `rm -rf` at every run → 2nd run destroys 1st-run backup of user's real zshrc (nvm, bun
+lines). deploy_zsh_config: if ~/.zshrc differs from repo copy (cmp -s) → timestamped mv in $HOME; identical → no
+backup (rerun no dup). Machine-specific lines → ~/.zshrc.local (sourced). Same flaw still on .bashrc/.vim (open,
+not fixed). Status: done.
