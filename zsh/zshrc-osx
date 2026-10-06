@@ -44,9 +44,10 @@ else
 	SAVEHIST=10000000
 fi
 
-# Identity for the vim header; install.sh also writes it into ~/.gitconfig
-export USER=bchanot
-export EMAIL=bchanot@gmail.fr
+# Identity for git commits and vim headers. Filled by install.sh (asked once,
+# reused from an existing ~/.bashrc / ~/.zshrc on re-runs), never stored here.
+export USER="@USER@"
+export EMAIL="@EMAIL@"
 
 # claude-dans-dtach : creer une session (claude tournant dans dtach, detache via Ctrl-\).
 # Usage : cd ~/projets/seo && cc seo   -> session nommee "seo".

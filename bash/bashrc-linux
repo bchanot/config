@@ -28,9 +28,10 @@ fi
 #export LANG=en_US.UTF-8
 
 
-# Identity for the vim header; install.sh also writes it into ~/.gitconfig
-export USER=bchanot
-export EMAIL=bchanot@gmail.fr
+# Identity for git commits and vim headers. Filled by install.sh (asked once,
+# reused from an existing ~/.bashrc / ~/.zshrc on re-runs), never stored here.
+export USER="@USER@"
+export EMAIL="@EMAIL@"
 
 ## Activate and custom bash completion
 #bind 'TAB:menu-complete'

@@ -6,6 +6,9 @@ set -euo pipefail
 # Resolve the repo root so the script works from any working directory.
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
+# Helpers are defined below; the identity itself is resolved right before the
+# OS-specific steps, so every prompt comes before the long package installs.
+
 # Set up Docker's official Ubuntu apt repo, then install the engine + compose plugin.
 # Idempotent: skips entirely if docker is already on PATH. Ubuntu-only (uses the ubuntu repo).
 install_docker() {
@@ -392,26 +395,28 @@ install_oh_my_zsh() {
 # ~/.zshrc.backup-<date>, not in ~/Oldconfig: that dir is wiped on every run, so
 # a second run would destroy the original (and its nvm/bun lines).
 deploy_zsh_config() {
+	local name="$1" email="$2" rendered backup
 	local themes="$HOME/.oh-my-zsh/custom/themes"
-	local backup
 	backup="$HOME/.zshrc.backup-$(date +%Y%m%d-%H%M%S)"
-	if [ -e "$HOME/.zshrc" ] && ! cmp -s "$HOME/.zshrc" "$SCRIPT_DIR/zsh/zshrc-osx"; then
+	rendered="$(render_identity_template "$SCRIPT_DIR/zsh/zshrc-osx" "$name" "$email")"
+	if [ -e "$HOME/.zshrc" ] && ! printf '%s\n' "$rendered" | cmp -s - "$HOME/.zshrc"; then
 		echo "Saving the current ~/.zshrc to $backup"
 		mv "$HOME/.zshrc" "$backup"
 	fi
-	echo "Deploying zsh/zshrc-osx + bchanot theme"
-	cp "$SCRIPT_DIR/zsh/zshrc-osx" "$HOME/.zshrc"
+	echo "Deploying zsh/zshrc-osx + bchanot theme ($name <$email>)"
+	printf '%s\n' "$rendered" > "$HOME/.zshrc"
 	mkdir -p "$themes"
 	cp "$SCRIPT_DIR/zsh/bchanot.zsh-theme" "$themes/"
 }
 
-# The chosen macOS shell: zsh gets oh-my-zsh + its config; bash needs brew's
-# bash 5 (macOS ships 3.2, too old for the bashrc). Either way it becomes the
-# login shell, so new terminals load the matching config.
+# The chosen macOS shell ($1): zsh gets oh-my-zsh + its config rendered with the
+# identity ($2 name, $3 email); bash needs brew's bash 5 (macOS ships 3.2, too
+# old for the bashrc). Either way it becomes the login shell, so new terminals
+# load the matching config.
 setup_macos_shell() {
 	if [ "$1" = zsh ]; then
 		install_oh_my_zsh
-		deploy_zsh_config
+		deploy_zsh_config "$2" "$3"
 		set_login_shell /bin/zsh
 	else
 		set_login_shell "$(brew --prefix)/bin/bash"
@@ -486,15 +491,36 @@ rc_export_value() {
 	sed -n "s/^export $1=//p" "$2" | tail -n 1 | tr -d "\"'"
 }
 
-# Print the repo gitconfig template with @USER@ and @EMAIL@ replaced by $1 and
-# $2. Bash substitution, so the values need no sed escaping.
-render_gitconfig() {
-	local name="$1" email="$2" line
+# Print the template $1 with @USER@ and @EMAIL@ replaced by $2 and $3. Bash
+# substitution, so the values need no sed escaping.
+render_identity_template() {
+	local file="$1" name="$2" email="$3" line
 	while IFS= read -r line || [ -n "$line" ]; do
 		line="${line//@USER@/$name}"
 		line="${line//@EMAIL@/$email}"
 		printf '%s\n' "$line"
-	done < "$SCRIPT_DIR/gitconfig"
+	done < "$file"
+}
+
+# One identity value (USER or EMAIL, $1) for git commits, vim headers and the rc
+# exports. Never stored in the repo. An export already in ~/.bashrc or ~/.zshrc
+# wins silently (a re-run never asks twice), else IDENTITY_<VAR> from the
+# environment, else a prompt ($2 label, $3 default) when a terminal is attached,
+# else the default. Prints the value.
+resolve_identity() {
+	local var="$1" label="$2" default="$3" value="" rc envvar="IDENTITY_$1"
+	for rc in "$HOME/.bashrc" "$HOME/.zshrc"; do
+		[ -f "$rc" ] && value="$(rc_export_value "$var" "$rc")"
+		if [ -n "$value" ] && [ "$value" != "@$var@" ]; then
+			printf '%s\n' "$value"
+			return 0
+		fi
+	done
+	value="${!envvar:-}"
+	if [ -z "$value" ] && [ -t 0 ]; then
+		read -rp "$label [$default]: " value || true
+	fi
+	printf '%s\n' "${value:-$default}"
 }
 
 # Install the user-scope ~/.gitconfig (a repo's own .git/config still wins).
@@ -510,7 +536,7 @@ deploy_gitconfig() {
 		echo "USER/EMAIL not exported by $rc — skipping ~/.gitconfig" >&2
 		return 0
 	fi
-	rendered="$(render_gitconfig "$name" "$email")"
+	rendered="$(render_identity_template "$SCRIPT_DIR/gitconfig" "$name" "$email")"
 	if printf '%s\n' "$rendered" | cmp -s - "$HOME/.gitconfig"; then
 		echo "$HOME/.gitconfig already up to date — skipping"
 		return 0
@@ -552,6 +578,11 @@ Replaced: Docker engine -> colima VM + docker CLI; code-server and mariadb run
 as brew services instead of systemd units.
 EOF
 }
+
+# Identity for git, vim and the rc exports: reused from an existing rc, else asked.
+identity_name="$(resolve_identity USER "Name for git commits and vim headers" "$(id -un)")"
+identity_email="$(resolve_identity EMAIL "Email for git commits and vim headers" "")"
+echo "Identity: $identity_name <${identity_email:-no email}>"
 
 # System packages: apt-get on Debian/Ubuntu, Homebrew on macOS.
 if command -v apt-get >/dev/null 2>&1; then
@@ -649,8 +680,8 @@ if [ "$(uname -s)" = "Darwin" ] && [ -f "$SCRIPT_DIR/bash/bashrc-osx" ]; then
 else
 	bashrc="bash/bashrc-linux"
 fi
-echo "Deploying $bashrc"
-cp "$SCRIPT_DIR/$bashrc" "$HOME/.bashrc"
+echo "Deploying $bashrc ($identity_name <$identity_email>)"
+render_identity_template "$SCRIPT_DIR/$bashrc" "$identity_name" "$identity_email" > "$HOME/.bashrc"
 
 # User-scope git config, identity taken from the bashrc just deployed.
 deploy_gitconfig "$SCRIPT_DIR/$bashrc"
@@ -691,7 +722,7 @@ fi
 # Linux install has that this one does not.
 if [ "$(uname -s)" = "Darwin" ]; then
 	wire_bash_profile
-	setup_macos_shell "${macos_shell:-bash}"
+	setup_macos_shell "${macos_shell:-bash}" "$identity_name" "$identity_email"
 	print_macos_gaps
 fi
 

@@ -20,7 +20,8 @@ install.sh            one-shot installer (OS auto-detected)
 vim/vimrc             vim config (pathogen, molokai, syntastic, NERDTree)
 vim/autoload/         pathogen loader (committed)
 vim/colors/           molokai colorscheme (committed)
-bash/bashrc-{linux,osx}          OS-detected bashrc (exports USER/EMAIL identity)
+bash/bashrc-{linux,osx}          OS-detected bashrc; USER/EMAIL identity = @USER@/@EMAIL@ placeholders,
+                                 asked at install (reused from an existing rc), never tracked
 gitconfig                        user-scope ~/.gitconfig template, @USER@/@EMAIL@ filled at install
 tmux.conf                        tmux config (vi keys, tpm plugins) → ~/.config/tmux/tmux.conf, both OSes (tmux ≥ 3.1)
 zsh/{zshrc-osx,bchanot.zsh-theme}  macOS zsh option: oh-my-zsh zshrc + theme porting the bash prompt

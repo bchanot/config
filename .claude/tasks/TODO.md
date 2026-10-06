@@ -114,3 +114,12 @@ Branch: feature/tmux-config (off develop, "met ca dans develop" = finish into de
 - [x] splits: prefix i (side by side) and prefix - (stacked), h/j/k/l kept
 - [x] Linux: deploy_tmux_config on both OSes (gated on tmux), clipboard if-shell (pbcopy else tmux buffer + OSC 52), XDG_CACHE_HOME in bashrc-linux
 - [x] Verified: shellcheck/bash -n, macOS test server, Ubuntu 24.04 container (tmux 3.4) full deploy + bindings + split + plugins + libtmux
+
+## Feature — identity asked at install, no hardcoded USER/EMAIL in tracked rc files (2026-10-06)
+Branch: feature/identity-prompt (off develop). Values were visible to anyone reading the repo.
+- [x] rc templates (bashrc-linux, bashrc-osx, zshrc-osx): `export USER="@USER@"` / `export EMAIL="@EMAIL@"`
+- [x] install.sh resolve_identity: existing ~/.bashrc / ~/.zshrc export wins silently → IDENTITY_USER/IDENTITY_EMAIL env → prompt (TTY) → default (id -un, empty email)
+- [x] install.sh: render_identity_template (generic, replaces render_gitconfig); bashrc + zshrc rendered, gitconfig unchanged (reads the rendered bashrc)
+- [x] vim/vimrc: g:_author / g:_email from $USER / $EMAIL
+- [x] README, CLAUDE.md (CHANGELOG left to the release step, like the tmux work)
+- [x] Verify: shellcheck, bash -n, zsh -n; temp-HOME render (env preset, existing rc reuse); vim reads the env

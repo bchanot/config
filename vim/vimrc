@@ -1,9 +1,9 @@
 ﻿" Uset compatibility with Vii
 set nocompatible
 
-" add user info variable
-let g:_author = "Bastien Chanot"
-let g:_email = "chanot.bastien@gmail.com"
+" user info from the shell identity (USER / EMAIL exported by the deployed rc)
+let g:_author = $USER
+let g:_email = exists('$EMAIL') ? $EMAIL : ''
 
 " Enable pathogen for plugins
 execute pathogen#infect()
