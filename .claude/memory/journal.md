@@ -105,3 +105,6 @@ Done: USER/EMAIL no longer hardcoded in tracked rc files (@USER@/@EMAIL@ placeho
 
 ## 2026-10-06 — tmux wheel halved, dtach mac/termux checked
 Done: copy-mode-vi WheelUp/DownPane rebound `-N 2` (stock 5), live reload OK. Merged bugfix/tmux-wheel-half → develop (ec9d0ed). Checked: dtach master on macOS reparents to launchd, survives parent SIGKILL + SIGHUP (sessions outlive shell crash). Termux: dtach 0.9 in official repo, scripts need `pkg install dtach fzf procps`; install.sh NOT Termux-safe (apt-get path); app kill = sessions lost, needs termux-wake-lock. Untested on device.
+
+## 2026-10-06 (pm, 7) — tmux ctrl+h/j/k/u in copy-mode
+Done: copy-mode-vi table had stock C-h cursor-left, C-u halfpage-up, C-j copy, so no-prefix pane moves became text nav once scrolled. Four keys rebound select-pane in copy-mode-vi, live reload OK. Merged bugfix/tmux-copy-mode-ctrl-nav → develop (8b6ed6b). Open: deployed ~/.config/tmux/tmux.conf on this Mac predates alt+v/wheel/this fix, `./install.sh` not re-run.
