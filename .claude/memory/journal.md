@@ -84,3 +84,6 @@ Local main 15 commits behind develop → worked off develop. install.sh Darwin b
 gaps report), bashrc-osx = bashrc-linux + macOS deltas, dt portable, zsh option (oh-my-zsh + bchanot theme). Tested:
 shellcheck, bash 3.2/5 + zsh -n, bashrc/zshrc/theme live in shells, dt with real dtach session, stub harness both
 choices. Full install.sh not run on this Mac. BDR-015/016, LRN-014, BLK-007. Merged develop 7d5dabd, not pushed.
+
+## 2026-10-06
+- Cut v1.0.0: first tagged release, develop → main via /release-candidate. CHANGELOG.md bootstrapped from 31 develop commits, version.txt created. Tag pushed. Pre-existing shellcheck SC2148 on bashrc files untouched.
