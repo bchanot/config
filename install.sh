@@ -418,10 +418,11 @@ setup_macos_shell() {
 	fi
 }
 
-# tmux: tmux.conf goes to ~/.config/tmux/tmux.conf (tmux >= 3.1 reads it there)
-# with tpm, which the config runs, in ~/.config/tmux/plugins/tpm. tmux reads a
-# ~/.tmux.conf first, so one found is moved aside; a differing config is kept as
-# tmux.conf.backup-<date>, outside ~/Oldconfig which every run wipes. Idempotent.
+# tmux, both OSes: tmux.conf goes to ~/.config/tmux/tmux.conf (read there since
+# tmux 3.1: Ubuntu 22.04+, brew) with tpm, which the config runs, in
+# ~/.config/tmux/plugins/tpm. tmux reads a ~/.tmux.conf first, so one found is
+# moved aside; a differing config is kept as tmux.conf.backup-<date>, outside
+# ~/Oldconfig which every run wipes. Idempotent.
 deploy_tmux_config() {
 	local dir="$HOME/.config/tmux" stamp
 	stamp="$(date +%Y%m%d-%H%M%S)"
@@ -456,9 +457,9 @@ install_tmux_plugins() {
 }
 
 # tmux-window-name (a listed plugin) is a python script importing libtmux. Brew's
-# python refuses pip installs outside a venv (PEP 668), so the user-site install
-# is retried with that guard lifted. Non-fatal: without it, windows keep tmux's
-# own automatic-rename.
+# python and Ubuntu 23.04+ refuse pip installs outside a venv (PEP 668), so the
+# user-site install is retried with that guard lifted. Non-fatal: without it,
+# windows keep tmux's own automatic-rename.
 install_libtmux() {
 	python3 -c 'import libtmux' 2>/dev/null && return 0
 	echo "Installing libtmux (tmux-window-name plugin)"
@@ -654,6 +655,11 @@ cp "$SCRIPT_DIR/$bashrc" "$HOME/.bashrc"
 # User-scope git config, identity taken from the bashrc just deployed.
 deploy_gitconfig "$SCRIPT_DIR/$bashrc"
 
+# tmux config + plugins (tmux comes from the apt or brew list above).
+if command -v tmux >/dev/null 2>&1; then
+	deploy_tmux_config
+fi
+
 # Python CLIs via pipx (run as the user, never sudo). Skipped if pipx is absent.
 if command -v pipx >/dev/null 2>&1; then
 	echo "Installing pipx CLIs (PyMuPDF -> pymupdf, Markdown -> markdown_py)"
@@ -685,7 +691,6 @@ fi
 # Linux install has that this one does not.
 if [ "$(uname -s)" = "Darwin" ]; then
 	wire_bash_profile
-	deploy_tmux_config
 	setup_macos_shell "${macos_shell:-bash}"
 	print_macos_gaps
 fi

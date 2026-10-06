@@ -22,7 +22,7 @@ vim/autoload/         pathogen loader (committed)
 vim/colors/           molokai colorscheme (committed)
 bash/bashrc-{linux,osx}          OS-detected bashrc (exports USER/EMAIL identity)
 gitconfig                        user-scope ~/.gitconfig template, @USER@/@EMAIL@ filled at install
-tmux.conf                        tmux config (vi keys, tpm plugins) → ~/.config/tmux/tmux.conf, macOS only
+tmux.conf                        tmux config (vi keys, tpm plugins) → ~/.config/tmux/tmux.conf, both OSes (tmux ≥ 3.1)
 zsh/{zshrc-osx,bchanot.zsh-theme}  macOS zsh option: oh-my-zsh zshrc + theme porting the bash prompt
 bin/{dt,dtach-router,claude-provider}   CLI scripts deployed to ~/.local/bin
 etc/profile.d/disk-usage-warning.sh     login-time low-disk warning → /etc/profile.d (Linux only)
