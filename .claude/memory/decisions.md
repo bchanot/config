@@ -131,3 +131,16 @@ Docker; staying on zsh w/o config. Status: merged develop 7d5dabd.
 lines). deploy_zsh_config: if ~/.zshrc differs from repo copy (cmp -s) → timestamped mv in $HOME; identical → no
 backup (rerun no dup). Machine-specific lines → ~/.zshrc.local (sourced). Same flaw still on .bashrc/.vim (open,
 not fixed). Status: done.
+
+## BDR-017 — tmux pane moves on ctrl+u/h/j/k, not hjkl nor option+arrows
+2026-10-06. u/h/j/k laid out as arrows (u up, h left, j down, k right): same key positions on AZERTY and QWERTY US,
+control exists on every keyboard (option does not, cmd never reaches tmux). Alternatives rejected: ctrl+i/j/k/m
+(C-i = Tab, C-m = Enter, same bytes, would break completion); option+arrows (needs iTerm2 "Left Option = Esc+",
+no option key on some keyboards). Cost: shell loses C-u (readline clear-line). Gain: C-l free, clears screen again.
+Resize mirrors it with prefix. Status: done (tmux.conf).
+
+## BDR-018 — Linux tmux clipboard = tmux buffer + OSC 52, no xsel/xclip
+2026-10-06. tmux.conf clipboard via `if-shell 'command -v pbcopy'`: macOS → pbcopy/pbpaste; else `y` =
+copy-selection-and-cancel, `p` = paste-buffer, tmux hands the buffer to the terminal through OSC 52 (set-clipboard),
+reaches the local clipboard over ssh from iTerm2. xsel/xclip rejected: headless servers have no X display (xsel
+errors), xclip keeps STDOUT open and hangs tmux. Status: done.
