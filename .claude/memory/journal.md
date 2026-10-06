@@ -102,3 +102,6 @@ Done: plain click leaves copy-mode (MouseUp1Pane cancel; MouseDown cancel was wr
 
 ## 2026-10-06 (pm, 5) — identity asked at install
 Done: USER/EMAIL no longer hardcoded in tracked rc files (@USER@/@EMAIL@ placeholders, rendered by install.sh; existing rc export reused, else IDENTITY_* env, else prompt). vimrc reads $USER/$EMAIL. Merged feature/identity-prompt → develop (0687f6a). Open: old values remain in git history (rewrite not done, destructive); deployed ~/.bashrc/.zshrc on this Mac still hold bchanot@gmail.fr.
+
+## 2026-10-06 — tmux wheel halved, dtach mac/termux checked
+Done: copy-mode-vi WheelUp/DownPane rebound `-N 2` (stock 5), live reload OK. Merged bugfix/tmux-wheel-half → develop (ec9d0ed). Checked: dtach master on macOS reparents to launchd, survives parent SIGKILL + SIGHUP (sessions outlive shell crash). Termux: dtach 0.9 in official repo, scripts need `pkg install dtach fzf procps`; install.sh NOT Termux-safe (apt-get path); app kill = sessions lost, needs termux-wake-lock. Untested on device.
