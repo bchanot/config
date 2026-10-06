@@ -99,3 +99,6 @@ Done: mode-style yellow/black (black bg invisible on dark iTerm2), mouse drag re
 
 ## 2026-10-06 (pm, 4) — tmux click exit + alt copy/paste
 Done: plain click leaves copy-mode (MouseUp1Pane cancel; MouseDown cancel was wrong, killed drag after scroll), alt+c = y, alt+v = paste, per OS. Merged bugfix/tmux-click-exit → develop (8b5e936). Open: iTerm2 "Left Option = Esc+" is manual (US Intl PC layout coming); dynamic-profile deploy offered, not asked. GNOME Terminal OSC 52 support unverified.
+
+## 2026-10-06 (pm, 5) — identity asked at install
+Done: USER/EMAIL no longer hardcoded in tracked rc files (@USER@/@EMAIL@ placeholders, rendered by install.sh; existing rc export reused, else IDENTITY_* env, else prompt). vimrc reads $USER/$EMAIL. Merged feature/identity-prompt → develop (0687f6a). Open: old values remain in git history (rewrite not done, destructive); deployed ~/.bashrc/.zshrc on this Mac still hold bchanot@gmail.fr.
