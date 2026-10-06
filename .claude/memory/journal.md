@@ -96,3 +96,6 @@ Done: tmux.conf fixes (pbcopy, C-a passthrough, is_vim via pane_current_command)
 
 ## 2026-10-06 (pm, 3) — tmux selection, keep tmux over iTerm2 splits
 Done: mode-style yellow/black (black bg invisible on dark iTerm2), mouse drag release copies (pbcopy / tmux buffer) without leaving copy-mode. Merged bugfix/tmux-selection → develop (b73ee08). Decided (chat, AskUserQuestion): keep tmux, not iTerm2/Terminator/WezTerm splits — ssh persistence, GNOME Terminal has no splits. BDR offered, not written yet. Wheel issue was a stale iTerm2 session: restart fixed it.
+
+## 2026-10-06 (pm, 4) — tmux click exit + alt copy/paste
+Done: plain click leaves copy-mode (MouseUp1Pane cancel; MouseDown cancel was wrong, killed drag after scroll), alt+c = y, alt+v = paste, per OS. Merged bugfix/tmux-click-exit → develop (8b5e936). Open: iTerm2 "Left Option = Esc+" is manual (US Intl PC layout coming); dynamic-profile deploy offered, not asked. GNOME Terminal OSC 52 support unverified.
