@@ -93,3 +93,6 @@ Done: tmux.conf (sohorx vi-style, tpm) deployed on macOS → ~/.config/tmux, tpm
 
 ## 2026-10-06 (pm, 2) — tmux keys + Linux
 Done: tmux.conf fixes (pbcopy, C-a passthrough, is_vim via pane_current_command), pane moves ctrl+u/h/j/k (AZERTY/QWERTY invariant; C-i/C-m = Tab/Enter, rejected), splits prefix i / -, deploy on Linux too (clipboard if-shell: pbcopy else tmux buffer + OSC 52). Verified in Ubuntu 24.04 container. Merged bugfix/tmux-macos-keys → develop (e3be25f).
+
+## 2026-10-06 (pm, 3) — tmux selection, keep tmux over iTerm2 splits
+Done: mode-style yellow/black (black bg invisible on dark iTerm2), mouse drag release copies (pbcopy / tmux buffer) without leaving copy-mode. Merged bugfix/tmux-selection → develop (b73ee08). Decided (chat, AskUserQuestion): keep tmux, not iTerm2/Terminator/WezTerm splits — ssh persistence, GNOME Terminal has no splits. BDR offered, not written yet. Wheel issue was a stale iTerm2 session: restart fixed it.
