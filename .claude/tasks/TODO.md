@@ -107,3 +107,10 @@ Branch: feature/tmux-config (off develop, "met ca dans develop" = finish into de
 - [x] README macOS step + CLAUDE.md layout
 - [x] shellcheck, bash -n, zsh -n; run deploy_tmux_config against a temp HOME; tmux parses the config
 - [x] cloudpex: `install_cloudpex` → `offer_cloudpex` ([y/N] via confirm, with the other Linux offers); README/CLAUDE.md wording
+
+## tmux follow-ups (2026-10-06, branch bugfix/tmux-macos-keys)
+- [x] tmux.conf: pbcopy/pbpaste, `bind C-a send-prefix`, is_vim via pane_current_command
+- [x] pane moves ctrl+u/h/j/k (arrow layout, AZERTY/QWERTY invariant), resize mirrors with prefix; C-l free
+- [x] splits: prefix i (side by side) and prefix - (stacked), h/j/k/l kept
+- [x] Linux: deploy_tmux_config on both OSes (gated on tmux), clipboard if-shell (pbcopy else tmux buffer + OSC 52), XDG_CACHE_HOME in bashrc-linux
+- [x] Verified: shellcheck/bash -n, macOS test server, Ubuntu 24.04 container (tmux 3.4) full deploy + bindings + split + plugins + libtmux
