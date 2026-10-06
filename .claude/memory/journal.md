@@ -90,3 +90,6 @@ choices. Full install.sh not run on this Mac. BDR-015/016, LRN-014, BLK-007. Mer
 
 ## 2026-10-06 (pm) — macOS tmux config + cloudpex offer
 Done: tmux.conf (sohorx vi-style, tpm) deployed on macOS → ~/.config/tmux, tpm cloned + plugins fetched headless, libtmux via pip --user (PEP 668 fallback). XDG_CACHE_HOME exported in osx rc files (config needs it, else resurrect dir = "/tmux/"). cloudpex: unconditional install → [y/N] offer with the other Linux extras. Verified: shellcheck, temp-HOME run x3, tmux parses config. Branch feature/tmux-config → develop.
+
+## 2026-10-06 (pm, 2) — tmux keys + Linux
+Done: tmux.conf fixes (pbcopy, C-a passthrough, is_vim via pane_current_command), pane moves ctrl+u/h/j/k (AZERTY/QWERTY invariant; C-i/C-m = Tab/Enter, rejected), splits prefix i / -, deploy on Linux too (clipboard if-shell: pbcopy else tmux buffer + OSC 52). Verified in Ubuntu 24.04 container. Merged bugfix/tmux-macos-keys → develop (e3be25f).
