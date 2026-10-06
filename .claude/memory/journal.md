@@ -87,3 +87,6 @@ choices. Full install.sh not run on this Mac. BDR-015/016, LRN-014, BLK-007. Mer
 
 ## 2026-10-06
 - Cut v1.0.0: first tagged release, develop → main via /release-candidate. CHANGELOG.md bootstrapped from 31 develop commits, version.txt created. Tag pushed. Pre-existing shellcheck SC2148 on bashrc files untouched.
+
+## 2026-10-06 (pm) — macOS tmux config + cloudpex offer
+Done: tmux.conf (sohorx vi-style, tpm) deployed on macOS → ~/.config/tmux, tpm cloned + plugins fetched headless, libtmux via pip --user (PEP 668 fallback). XDG_CACHE_HOME exported in osx rc files (config needs it, else resurrect dir = "/tmux/"). cloudpex: unconditional install → [y/N] offer with the other Linux extras. Verified: shellcheck, temp-HOME run x3, tmux parses config. Branch feature/tmux-config → develop.

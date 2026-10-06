@@ -22,6 +22,7 @@ vim/autoload/         pathogen loader (committed)
 vim/colors/           molokai colorscheme (committed)
 bash/bashrc-{linux,osx}          OS-detected bashrc (exports USER/EMAIL identity)
 gitconfig                        user-scope ~/.gitconfig template, @USER@/@EMAIL@ filled at install
+tmux.conf                        tmux config (vi keys, tpm plugins) → ~/.config/tmux/tmux.conf, macOS only
 zsh/{zshrc-osx,bchanot.zsh-theme}  macOS zsh option: oh-my-zsh zshrc + theme porting the bash prompt
 bin/{dt,dtach-router,claude-provider}   CLI scripts deployed to ~/.local/bin
 etc/profile.d/disk-usage-warning.sh     login-time low-disk warning → /etc/profile.d (Linux only)
@@ -31,7 +32,7 @@ etc/default/earlyoom                    earlyoom args, spare sshd / kill node fi
 etc/fail2ban/jail.d/local.conf          sshd jail: journal backend, all-ports ban, LAN ignored (always)
 etc/apt/apt.conf.d/20auto-upgrades      unattended security upgrades on (always)
 etc/ssh/sshd_config.d/20-hardening.conf sshd limits that cannot lock out, sshd -t gated (always)
-cloudpex/{cloudpex,install.sh,README.md} on-demand SMB mount helper → /usr/local/bin; site values
+cloudpex/{cloudpex,install.sh,README.md} on-demand SMB mount helper → /usr/local/bin, offered [y/N]; site values
                                          prompted at install → /etc/cloudpex.conf, never in the script (FR docs)
 .claude/{tasks,memory,audits}/   Claude working state
 ```

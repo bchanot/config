@@ -99,3 +99,11 @@ Same branch. Prompt at start of Darwin block (MACOS_SHELL=bash|zsh env overrides
 - [x] README + CLAUDE.md layout
 - [x] Verify: shellcheck, bash -n, render to temp HOME, `git config --file` reads values
 - [x] `git-delta` added to apt + brew lists (gitconfig pager = delta)
+
+## Feature — macOS tmux config (tmux.conf + tpm) ; cloudpex becomes an offer (2026-10-06)
+Branch: feature/tmux-config (off develop, "met ca dans develop" = finish into develop). tmux already in the brew list.
+- [x] install.sh `deploy_tmux_config` (Darwin): tmux.conf → ~/.config/tmux/tmux.conf (differing one → .backup-<date>, stray ~/.tmux.conf moved aside since tmux reads it first), clone tpm, headless `install_plugins`, libtmux for tmux-window-name (non-fatal)
+- [x] bashrc-osx + zshrc-osx: export XDG_CACHE_HOME (tmux.conf resurrect dir needs it, else "/tmux/")
+- [x] README macOS step + CLAUDE.md layout
+- [x] shellcheck, bash -n, zsh -n; run deploy_tmux_config against a temp HOME; tmux parses the config
+- [x] cloudpex: `install_cloudpex` → `offer_cloudpex` ([y/N] via confirm, with the other Linux offers); README/CLAUDE.md wording

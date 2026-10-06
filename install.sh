@@ -152,11 +152,11 @@ unwire_dtach_profile() {
 	' "$profile" > "$profile.tmp" && mv "$profile.tmp" "$profile"
 }
 
-# NAS helper: deploys the on-demand CloudPex SMB mount command to /usr/local/bin
-# (see cloudpex/README.md). Nothing is mounted and no credential is stored.
-# Linux-only (cifs-utils); the helper's own installer is idempotent.
-install_cloudpex() {
-	echo "Installing the cloudpex mount helper"
+# NAS helper, on request: deploys the on-demand CloudPex SMB mount command to
+# /usr/local/bin (see cloudpex/README.md). Nothing is mounted and no credential is
+# stored. Linux-only (cifs-utils); the helper's own installer is idempotent.
+offer_cloudpex() {
+	confirm "Install the cloudpex NAS mount helper (on-demand SMB mount)?" || return 0
 	bash "$SCRIPT_DIR/cloudpex/install.sh"
 }
 
@@ -418,6 +418,55 @@ setup_macos_shell() {
 	fi
 }
 
+# tmux: tmux.conf goes to ~/.config/tmux/tmux.conf (tmux >= 3.1 reads it there)
+# with tpm, which the config runs, in ~/.config/tmux/plugins/tpm. tmux reads a
+# ~/.tmux.conf first, so one found is moved aside; a differing config is kept as
+# tmux.conf.backup-<date>, outside ~/Oldconfig which every run wipes. Idempotent.
+deploy_tmux_config() {
+	local dir="$HOME/.config/tmux" stamp
+	stamp="$(date +%Y%m%d-%H%M%S)"
+	mkdir -p "$dir"
+	if [ -e "$HOME/.tmux.conf" ]; then
+		echo "Moving ~/.tmux.conf to ~/.tmux.conf.backup-$stamp (it would shadow $dir/tmux.conf)"
+		mv "$HOME/.tmux.conf" "$HOME/.tmux.conf.backup-$stamp"
+	fi
+	if [ -e "$dir/tmux.conf" ] && ! cmp -s "$dir/tmux.conf" "$SCRIPT_DIR/tmux.conf"; then
+		echo "Saving the current tmux.conf to $dir/tmux.conf.backup-$stamp"
+		mv "$dir/tmux.conf" "$dir/tmux.conf.backup-$stamp"
+	fi
+	echo "Deploying tmux.conf to $dir"
+	cp "$SCRIPT_DIR/tmux.conf" "$dir/tmux.conf"
+	install_tmux_plugins "$dir/plugins/tpm"
+}
+
+# tpm plus the plugins tmux.conf lists, fetched now so the first tmux start is
+# complete. tpm's script starts a tmux server to read @tpm_plugins, and the config
+# expects XDG_CACHE_HOME (exported by the rc files, not loaded by this script).
+# Failures only warn: prefix+I fetches the plugins from inside tmux.
+install_tmux_plugins() {
+	local tpm="$1"
+	if [ ! -d "$tpm" ]; then
+		echo "Cloning tpm"
+		git clone --quiet https://github.com/tmux-plugins/tpm "$tpm"
+	fi
+	echo "Installing tmux plugins"
+	XDG_CACHE_HOME="${XDG_CACHE_HOME:-$HOME/.cache}" "$tpm/bin/install_plugins" \
+		|| echo "tmux plugins not installed — press prefix+I inside tmux" >&2
+	install_libtmux
+}
+
+# tmux-window-name (a listed plugin) is a python script importing libtmux. Brew's
+# python refuses pip installs outside a venv (PEP 668), so the user-site install
+# is retried with that guard lifted. Non-fatal: without it, windows keep tmux's
+# own automatic-rename.
+install_libtmux() {
+	python3 -c 'import libtmux' 2>/dev/null && return 0
+	echo "Installing libtmux (tmux-window-name plugin)"
+	python3 -m pip install --quiet --user libtmux 2>/dev/null \
+		|| python3 -m pip install --quiet --user --break-system-packages libtmux \
+		|| echo "libtmux not installed — tmux-window-name stays inactive" >&2
+}
+
 # macOS terminals open LOGIN shells, which read ~/.bash_profile and never ~/.bashrc.
 # Appends one line sourcing ~/.bashrc. Idempotent: skipped when already present.
 wire_bash_profile() {
@@ -545,9 +594,6 @@ if command -v apt-get >/dev/null 2>&1; then
 	# Low-disk login warning (system-wide profile.d snippet).
 	install_disk_warning
 
-	# On-demand NAS mount helper (cloudpex/).
-	install_cloudpex
-
 	# Security baseline: brute-force bans, automatic security updates, sshd limits.
 	install_fail2ban
 	install_unattended_upgrades
@@ -626,11 +672,12 @@ chmod +x "$HOME"/.local/bin/dt "$HOME"/.local/bin/dtach-router "$HOME"/.local/bi
 # Remove any stale dtach wiring from ~/.profile (the menu now ships in ~/.bashrc; see above).
 unwire_dtach_profile
 
-# Optional system changes, offered last so the base install is complete even when
-# declined. Linux/systemd only. Each prompts [y/N] on a terminal, is skipped otherwise.
+# Optional pieces, offered last so the base install is complete even when
+# declined. Linux only. Each prompts [y/N] on a terminal, is skipped otherwise.
 if command -v apt-get >/dev/null 2>&1; then
 	offer_tmp_on_disk
 	offer_ssh_memory_guard
+	offer_cloudpex
 fi
 
 # macOS: login shells skip ~/.bashrc unless ~/.bash_profile sources it (kept even
@@ -638,6 +685,7 @@ fi
 # Linux install has that this one does not.
 if [ "$(uname -s)" = "Darwin" ]; then
 	wire_bash_profile
+	deploy_tmux_config
 	setup_macos_shell "${macos_shell:-bash}"
 	print_macos_gaps
 fi
