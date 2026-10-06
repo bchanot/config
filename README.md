@@ -78,7 +78,7 @@ What it does:
 
 ### Packages installed (apt)
 
-- **Build / VCS / C dev**: `vim git git-lfs git-filter-repo gitleaks gcc make pkg-config dkms valgrind shellcheck gh`
+- **Build / VCS / C dev**: `vim git git-lfs git-filter-repo gitleaks gcc make pkg-config dkms valgrind shellcheck gh git-delta` (`git-delta` = `delta`, the pager set in `gitconfig`)
 - **Net / security / transport**: `curl gnupg ca-certificates apt-transport-https net-tools openssh-server cifs-utils lftp ftp`
 - **Shell tooling**: `unzip tree tmux fzf dtach`
 - **Runtimes**: `nodejs python3-pip pipx php-cli`
@@ -100,7 +100,7 @@ The script is re-runnable: each run re-backs up to `~/Oldconfig` (overwriting th
 The same `./install.sh` detects macOS and replaces `apt-get` with Homebrew. It first asks which login shell you want, **bash** or **zsh** (`[bash]` by default; answer in advance with `MACOS_SHELL=zsh ./install.sh`, and with no terminal attached it picks bash):
 
 1. Installs Homebrew with its official script when `brew` is missing (this also pulls the Xcode Command Line Tools: clang, make, git), then `brew update` + `brew upgrade`.
-2. Installs the apt list mapped to formulae: `vim git git-lfs git-filter-repo gitleaks pkgconf shellcheck gh curl gnupg lftp inetutils unzip tree tmux fzf dtach node python pipx php mariadb imagemagick ffmpeg weasyprint poppler qpdf webp libavif bash`. Brew's `php` already ships gd, mbstring, xml, intl, curl and mysql.
+2. Installs the apt list mapped to formulae: `vim git git-lfs git-filter-repo gitleaks pkgconf shellcheck gh git-delta curl gnupg lftp inetutils unzip tree tmux fzf dtach node python pipx php mariadb imagemagick ffmpeg weasyprint poppler qpdf webp libavif bash`. Brew's `php` already ships gd, mbstring, xml, intl, curl and mysql.
 3. Docker: `colima` (the Linux VM) + `docker docker-compose docker-buildx`. Writes `~/.docker/config.json` with `cliPluginsExtraDirs` so `docker compose` works, only when that file does not exist yet (otherwise prints the line to add).
 4. Starts `colima`, `code-server` and `mariadb` as `brew services` (the `systemctl enable --now` equivalent), skipping any already started.
 5. Deploys `bashrc-osx`, then appends one line to `~/.bash_profile` that sources `~/.bashrc`: macOS terminals open login shells, which never read `~/.bashrc` on their own. Done for both choices, so `bash` stays usable.

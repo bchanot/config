@@ -303,7 +303,7 @@ install_brew_packages() {
 	brew update
 	brew upgrade
 	brew install \
-		vim git git-lfs git-filter-repo gitleaks pkgconf shellcheck gh \
+		vim git git-lfs git-filter-repo gitleaks pkgconf shellcheck gh git-delta \
 		curl gnupg lftp inetutils \
 		unzip tree tmux fzf dtach \
 		node python pipx php \
@@ -508,10 +508,12 @@ if command -v apt-get >/dev/null 2>&1; then
 	sudo apt-get update
 	sudo apt-get upgrade -y
 
-	# Build + version control + C dev tooling (gitleaks backs the pre-commit hook).	# Web stack: MariaDB + PHP modules for local WordPress/LAMP work; the php-* metapackages
+	# Build + version control + C dev tooling (gitleaks backs the pre-commit hook,
+	# git-delta provides `delta`, the pager set in gitconfig).
+	# Web stack: MariaDB + PHP modules for local WordPress/LAMP work; the php-* metapackages
 	# follow the distro's PHP version instead of pinning php8.x-*.
 	sudo apt-get install -y \
-		vim git git-lfs git-filter-repo gitleaks gcc make pkg-config dkms valgrind shellcheck \
+		vim git git-lfs git-filter-repo gitleaks gcc make pkg-config dkms valgrind shellcheck git-delta \
 		curl gnupg ca-certificates apt-transport-https \
 		unzip tree tmux fzf dtach net-tools \
 		openssh-server cifs-utils lftp ftp \
