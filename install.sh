@@ -303,7 +303,7 @@ install_brew_packages() {
 	brew update
 	brew upgrade
 	brew install \
-		vim git git-lfs git-filter-repo gitleaks pkgconf shellcheck gh \
+		vim git git-lfs git-filter-repo gitleaks pkgconf shellcheck gh git-delta \
 		curl gnupg lftp inetutils \
 		unzip tree tmux fzf dtach \
 		node python pipx php \
@@ -364,7 +364,8 @@ set_login_shell() {
 	if ! grep -qxF "$target" /etc/shells; then
 		echo "$target" | sudo tee -a /etc/shells >/dev/null
 	fi
-	current="$(dscl . -read "/Users/$USER" UserShell | awk '{ print $2 }')"
+	# id -un, not $USER: the deployed rc sets USER to the git/vim identity.
+	current="$(dscl . -read "/Users/$(id -un)" UserShell | awk '{ print $2 }')"
 	if [ "$current" = "$target" ]; then
 		echo "Login shell already $target — skipping"
 		return 0
@@ -429,6 +430,50 @@ wire_bash_profile() {
 		"$line" >> "$profile"
 }
 
+# Value of `export NAME=value` ($1) in the rc file $2, quotes stripped. The last
+# match wins, as when the shell sources it. Empty when absent.
+rc_export_value() {
+	sed -n "s/^export $1=//p" "$2" | tail -n 1 | tr -d "\"'"
+}
+
+# Print the repo gitconfig template with @USER@ and @EMAIL@ replaced by $1 and
+# $2. Bash substitution, so the values need no sed escaping.
+render_gitconfig() {
+	local name="$1" email="$2" line
+	while IFS= read -r line || [ -n "$line" ]; do
+		line="${line//@USER@/$name}"
+		line="${line//@EMAIL@/$email}"
+		printf '%s\n' "$line"
+	done < "$SCRIPT_DIR/gitconfig"
+}
+
+# Install the user-scope ~/.gitconfig (a repo's own .git/config still wins).
+# The identity is read from the USER/EMAIL exports of the deployed rc ($1), so
+# git and the shell agree. A ~/.gitconfig that differs is kept as
+# ~/.gitconfig.backup-<date>, outside ~/Oldconfig which every run wipes.
+# Idempotent: an identical ~/.gitconfig is left alone.
+deploy_gitconfig() {
+	local rc="$1" name email rendered backup
+	name="$(rc_export_value USER "$rc")"
+	email="$(rc_export_value EMAIL "$rc")"
+	if [ -z "$name" ] || [ -z "$email" ]; then
+		echo "USER/EMAIL not exported by $rc — skipping ~/.gitconfig" >&2
+		return 0
+	fi
+	rendered="$(render_gitconfig "$name" "$email")"
+	if printf '%s\n' "$rendered" | cmp -s - "$HOME/.gitconfig"; then
+		echo "$HOME/.gitconfig already up to date — skipping"
+		return 0
+	fi
+	if [ -e "$HOME/.gitconfig" ]; then
+		backup="$HOME/.gitconfig.backup-$(date +%Y%m%d-%H%M%S)"
+		echo "Saving the current ~/.gitconfig to $backup"
+		mv "$HOME/.gitconfig" "$backup"
+	fi
+	echo "Deploying gitconfig to ~/.gitconfig ($name <$email>)"
+	printf '%s\n' "$rendered" > "$HOME/.gitconfig"
+}
+
 # What the Linux install sets up that this macOS run did not, and why.
 print_macos_gaps() {
 	cat <<'EOF'
@@ -463,11 +508,12 @@ if command -v apt-get >/dev/null 2>&1; then
 	sudo apt-get update
 	sudo apt-get upgrade -y
 
-	# Build + version control + C dev tooling (gitleaks backs the pre-commit hook).
+	# Build + version control + C dev tooling (gitleaks backs the pre-commit hook,
+	# git-delta provides `delta`, the pager set in gitconfig).
 	# Web stack: MariaDB + PHP modules for local WordPress/LAMP work; the php-* metapackages
 	# follow the distro's PHP version instead of pinning php8.x-*.
 	sudo apt-get install -y \
-		vim git git-lfs git-filter-repo gitleaks gcc make pkg-config dkms valgrind shellcheck \
+		vim git git-lfs git-filter-repo gitleaks gcc make pkg-config dkms valgrind shellcheck git-delta \
 		curl gnupg ca-certificates apt-transport-https \
 		unzip tree tmux fzf dtach net-tools \
 		openssh-server cifs-utils lftp ftp \
@@ -483,7 +529,8 @@ if command -v apt-get >/dev/null 2>&1; then
 	if ! command -v code-server >/dev/null 2>&1; then
 		curl -fsSL https://code-server.dev/install.sh | sh
 	fi
-	sudo systemctl enable --now "code-server@$USER"
+	# id -un, not $USER: the deployed bashrc sets USER to the git/vim identity.
+	sudo systemctl enable --now "code-server@$(id -un)"
 
 	# GNOME desktop (GDM + Shell): the RDP remote login below needs a GNOME session
 	# to hand out; a bare server install has none. Ubuntu-only metapackage.
@@ -557,6 +604,9 @@ else
 fi
 echo "Deploying $bashrc"
 cp "$SCRIPT_DIR/$bashrc" "$HOME/.bashrc"
+
+# User-scope git config, identity taken from the bashrc just deployed.
+deploy_gitconfig "$SCRIPT_DIR/$bashrc"
 
 # Python CLIs via pipx (run as the user, never sudo). Skipped if pipx is absent.
 if command -v pipx >/dev/null 2>&1; then

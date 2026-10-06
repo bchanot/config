@@ -90,3 +90,12 @@ Same branch. Prompt at start of Darwin block (MACOS_SHELL=bash|zsh env overrides
 - [x] install.sh: use_brew_bash_login_shell → set_login_shell <path>, called at end with chosen shell
 - [x] README + CLAUDE.md
 - [x] shellcheck/bash -n/zsh -n; runtime: theme in zsh (prompt render, timer, git bits), dtach-router sourced in zsh; harness both choices
+
+## Feature — user-scope ~/.gitconfig from repo template, VIUSER/VIMAIL → USER/EMAIL (2026-10-06)
+- [x] rc files (bashrc-linux, bashrc-osx, zshrc-osx): `VIUSER`/`VIMAIL` → `USER`/`EMAIL`
+- [x] `gitconfig` template: git never expands `$VAR` → `@USER@`/`@EMAIL@` placeholders, `excludesfile = ~/.gitignore`
+- [x] install.sh `deploy_gitconfig`: values read from deployed bashrc, rendered → ~/.gitconfig, differing old one → ~/.gitconfig.backup-<date>
+- [x] install.sh: `$USER` → `$(id -un)` (dscl, code-server unit): rc now overrides USER with identity
+- [x] README + CLAUDE.md layout
+- [x] Verify: shellcheck, bash -n, render to temp HOME, `git config --file` reads values
+- [x] `git-delta` added to apt + brew lists (gitconfig pager = delta)

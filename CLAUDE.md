@@ -20,7 +20,8 @@ install.sh            one-shot installer (OS auto-detected)
 vim/vimrc             vim config (pathogen, molokai, syntastic, NERDTree)
 vim/autoload/         pathogen loader (committed)
 vim/colors/           molokai colorscheme (committed)
-bash/bashrc-{linux,osx}          OS-detected bashrc
+bash/bashrc-{linux,osx}          OS-detected bashrc (exports USER/EMAIL identity)
+gitconfig                        user-scope ~/.gitconfig template, @USER@/@EMAIL@ filled at install
 zsh/{zshrc-osx,bchanot.zsh-theme}  macOS zsh option: oh-my-zsh zshrc + theme porting the bash prompt
 bin/{dt,dtach-router,claude-provider}   CLI scripts deployed to ~/.local/bin
 etc/profile.d/disk-usage-warning.sh     login-time low-disk warning → /etc/profile.d (Linux only)

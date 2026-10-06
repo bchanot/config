@@ -35,9 +35,9 @@ fi
 #export LANG=en_US.UTF-8
 
 
-# Used for vim header
-export VIUSER=bchanot
-export VIMAIL=bchanot@gmail.fr
+# Identity for the vim header; install.sh also writes it into ~/.gitconfig
+export USER=bchanot
+export EMAIL=bchanot@gmail.fr
 
 ## Activate and custom bash completion
 #bind 'TAB:menu-complete'

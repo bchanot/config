@@ -1,0 +1,31 @@
+# Template for the user-scope ~/.gitconfig, rendered by install.sh.
+# Git never expands $VARS: @USER@ and @EMAIL@ are replaced at install
+# time with the USER and EMAIL exported by the deployed bashrc.
+# A repo .git/config still overrides these values for that repo.
+[user]
+    name = @USER@
+    email = @EMAIL@
+[push]
+    default = current
+[color]
+    ui = auto
+[pull]
+    rebase = true
+[core]
+    editor = vim
+    pager = delta
+    excludesfile = ~/.gitignore
+[advice]
+    detachedHead = false
+[merge]
+    tool = vimdiff
+    conflictStyle = zdiff3
+[pager]
+    branch = false
+[url "git@salsa.debian.org:installer-team/"]
+    pushInsteadOf = https://salsa.debian.org/installer-team/
+[interactive]
+    diffFilter = delta --color-only
+[delta]
+    navigate = true  # use n and N to move between diff sections
+    dark = true      # or light = true, or omit for auto-detection

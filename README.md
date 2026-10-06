@@ -27,6 +27,7 @@ curl -fsSL https://git.bchanot.fr/bchanot/config/raw/branch/master/remote-instal
 | `vim/vimrc`          | Vim config: pathogen, molokai, syntastic (C with `-Wall -Werror -Wextra`), NERDTree, 42-style canonical class generators (`:ClassH`, `:ClassC`). |
 | `vim/autoload/`      | `pathogen.vim` plugin loader (committed).                      |
 | `vim/colors/`        | `molokai.vim` colorscheme (committed).                         |
+| `gitconfig`          | Template of the user-scope `~/.gitconfig`. `@USER@` and `@EMAIL@` are filled at install with the `USER` and `EMAIL` exported by the bashrc (git never expands `$VARS` itself). |
 | `bash/bashrc-linux`  | bashrc for desktop Linux (git-aware prompt + command timer).   |
 | `bash/bashrc-osx`    | bashrc for macOS: `bashrc-linux` adapted (Homebrew on `PATH`, BSD `ls -G`, bash 5 clock for the timer, `cc` without `systemd-run`). |
 | `zsh/zshrc-osx`      | zshrc for macOS when zsh is chosen: oh-my-zsh + the same env, aliases and dtach menu as `bashrc-osx`. Loads `~/.zshrc.local` for machine-specific lines. |
@@ -64,11 +65,11 @@ What it does:
 3. Moves any existing `~/.vim`, `~/.vimrc`, `~/.bashrc`, `~/.Sublivim` to `~/Oldconfig`.
 4. Clones the `syntastic` and `nerdtree` vim plugins into `~/.vim/bundle/`.
 5. Copies the tracked vim files into `~/.vim` and symlinks `~/.vimrc`.
-6. Picks the bashrc by OS: macOS → `bashrc-osx` (falls back to `bashrc-linux` if missing), everything else → `bashrc-linux`. Copies it to `~/.bashrc`.
+6. Picks the bashrc by OS: macOS → `bashrc-osx` (falls back to `bashrc-linux` if missing), everything else → `bashrc-linux`. Copies it to `~/.bashrc`. Then renders `gitconfig` into `~/.gitconfig` with that bashrc's `USER` / `EMAIL`. A different existing `~/.gitconfig` is saved as `~/.gitconfig.backup-<date>`; an identical one is left alone. It is the global level only: a repo's own `.git/config` still overrides it. `core.excludesfile` points at `~/.gitignore`, ignored by git when the file does not exist.
 7. Installs Python CLIs via `pipx` (`PyMuPDF` → `pymupdf`, `Markdown` → `markdown_py`) — skipped if `pipx` is absent.
 8. Copies the `bin/` scripts (`dt`, `dtach-router`, `claude-provider`) into `~/.local/bin`. The dtach session-resume menu ships in the deployed bashrc (both OSes), so every interactive shell offers it — including VS Code Remote-SSH terminals, which are non-login and never read `~/.profile`. The installer also strips any older dtach block left in `~/.profile` so a plain SSH login doesn't prompt twice.
 9. On Linux, installs `etc/profile.d/disk-usage-warning.sh` to `/etc/profile.d/` (needs `sudo`) so each login warns when `/` or `/home` cross 85% usage.
-10. On Linux, installs **code-server** (VS Code in the browser) via its vendor script — skipped if already present — and enables the `code-server@$USER` systemd service.
+10. On Linux, installs **code-server** (VS Code in the browser) via its vendor script — skipped if already present — and enables the `code-server@<login>` systemd service (login from `id -un`: the bashrc overrides `$USER`).
 11. On Linux, installs **`ubuntu-desktop-minimal`** (GDM + GNOME Shell, ~1.5 GB): the RDP remote login below hands out a GNOME session, which a bare server install does not have. Then sets up **RDP remote login** via `gnome-remote-desktop` (Wayland-native): installs the daemon + `openssl`, generates a self-signed TLS cert once, and prompts interactively for shared "gate" credentials (skipped when no terminal is attached, or already set). Disables `xrdp` if present; opens UFW port `3389` only when UFW is already active. Finally, when `lspci` sees an NVIDIA GPU, runs `ubuntu-drivers install` to put on the driver the distro recommends for the card (no version pinned; loads at the next reboot). Skipped on machines without an NVIDIA GPU.
 12. On Linux, installs the **`cloudpex`** NAS mount helper to `/usr/local/bin` via `cloudpex/install.sh`, which prompts for the NAS host, share name, SMB user, mount point and SMB version and writes them to `/etc/cloudpex.conf` (root, `0600`; an existing config is shown and kept unless you say `n`; skipped when no terminal is attached). Nothing is mounted, no password stored, see [`cloudpex/README.md`](cloudpex/README.md).
 13. On Linux, installs the **security baseline**, always, no prompt: **fail2ban** (+ `nftables`) with `etc/fail2ban/jail.d/local.conf` (sshd jail reading the journal, bans the offending IP on every port so the SSH port does not matter, 5 failures in 10 min → 1 h ban, loopback and private LAN ranges never banned); **unattended-upgrades** enabled through `etc/apt/apt.conf.d/20auto-upgrades`; and the **sshd drop-in** `etc/ssh/sshd_config.d/20-hardening.conf` (`PermitRootLogin no`, `MaxAuthTries 3`, `LoginGraceTime 20`), checked with `sshd -t` and removed again if sshd rejects it, then `reload ssh`. Authentication methods, port and user lists are left as they are.
@@ -77,7 +78,7 @@ What it does:
 
 ### Packages installed (apt)
 
-- **Build / VCS / C dev**: `vim git git-lfs git-filter-repo gitleaks gcc make pkg-config dkms valgrind shellcheck gh`
+- **Build / VCS / C dev**: `vim git git-lfs git-filter-repo gitleaks gcc make pkg-config dkms valgrind shellcheck gh git-delta` (`git-delta` = `delta`, the pager set in `gitconfig`)
 - **Net / security / transport**: `curl gnupg ca-certificates apt-transport-https net-tools openssh-server cifs-utils lftp ftp`
 - **Shell tooling**: `unzip tree tmux fzf dtach`
 - **Runtimes**: `nodejs python3-pip pipx php-cli`
@@ -99,7 +100,7 @@ The script is re-runnable: each run re-backs up to `~/Oldconfig` (overwriting th
 The same `./install.sh` detects macOS and replaces `apt-get` with Homebrew. It first asks which login shell you want, **bash** or **zsh** (`[bash]` by default; answer in advance with `MACOS_SHELL=zsh ./install.sh`, and with no terminal attached it picks bash):
 
 1. Installs Homebrew with its official script when `brew` is missing (this also pulls the Xcode Command Line Tools: clang, make, git), then `brew update` + `brew upgrade`.
-2. Installs the apt list mapped to formulae: `vim git git-lfs git-filter-repo gitleaks pkgconf shellcheck gh curl gnupg lftp inetutils unzip tree tmux fzf dtach node python pipx php mariadb imagemagick ffmpeg weasyprint poppler qpdf webp libavif bash`. Brew's `php` already ships gd, mbstring, xml, intl, curl and mysql.
+2. Installs the apt list mapped to formulae: `vim git git-lfs git-filter-repo gitleaks pkgconf shellcheck gh git-delta curl gnupg lftp inetutils unzip tree tmux fzf dtach node python pipx php mariadb imagemagick ffmpeg weasyprint poppler qpdf webp libavif bash`. Brew's `php` already ships gd, mbstring, xml, intl, curl and mysql.
 3. Docker: `colima` (the Linux VM) + `docker docker-compose docker-buildx`. Writes `~/.docker/config.json` with `cliPluginsExtraDirs` so `docker compose` works, only when that file does not exist yet (otherwise prints the line to add).
 4. Starts `colima`, `code-server` and `mariadb` as `brew services` (the `systemctl enable --now` equivalent), skipping any already started.
 5. Deploys `bashrc-osx`, then appends one line to `~/.bash_profile` that sources `~/.bashrc`: macOS terminals open login shells, which never read `~/.bashrc` on their own. Done for both choices, so `bash` stays usable.
