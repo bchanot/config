@@ -36,6 +36,7 @@ curl -fsSL https://git.bchanot.fr/bchanot/config/raw/branch/master/remote-instal
 | `bin/dt`             | dtach session manager for claude-in-dtach sessions.            |
 | `bin/dtach-router`   | Dashboard to resume dtach sessions, shown at the start of every interactive shell (wired into `~/.bashrc` by the installer). |
 | `bin/claude-provider`| Switch Claude Code between Anthropic and OpenRouter.           |
+| `bin/repo-sync`      | One local tree (`~/repos`) for every repository reachable on your forges (GitLab, GitHub, Gitea/Forgejo, Bitbucket Cloud), daily cache, `repo <project>` shell function to jump into one. |
 | `etc/profile.d/disk-usage-warning.sh` | Login-time warning (bold red) when `/` or `/home` cross 85% usage. Deployed to `/etc/profile.d/` on Linux. |
 
 ## Install
@@ -121,6 +122,12 @@ Deployed to `~/.local/bin` (the deployed bashrc adds this dir to `PATH`):
   ```sh
   export OPENROUTER_API_KEY="<your-openrouter-key>"
   ```
+- **`repo-sync`** — one local tree for every git repository you can reach on your forges, same layout as the Alphalink `repo` zsh function: `~/repos/<namespace with / as @>/<project>` (`REPOS_DIR` overrides). Needs `jq`, `curl`, `git`.
+  - `repo-sync add` registers a forge (type `gitlab|github|gitea|bitbucket`, host, token asked on the terminal) in **`~/.config/repos/forges.conf`** (mode 0600, parsed line by line, never tracked). Run it once per access you have. GitHub Enterprise and self-hosted GitLab/Gitea work by host; Bitbucket is Cloud only (Atlassian email + API token).
+  - `repo-sync refresh` rebuilds the project list in `~/.cache/repos/list` when it is older than a day (`--force` to redo it now). The deployed rc files run it in the background at shell start, so the list is fresh at most once per day without a cron.
+  - `repo-sync list|tree` shows the projects; `repo-sync clone [--filter REGEX] [--pull] [--dry-run] [--https]` clones everything missing.
+  - `repo <project> [namespace]` (shell function, bash and zsh, with completion) clones on demand and `cd`s into it. The token only lists projects; clones use ssh unless `--https`.
+  - The same `namespace/project` on two forges is kept once, from the first section of `forges.conf`. Archived projects and mirrors are skipped.
 
 ## Requirements
 

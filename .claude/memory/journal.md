@@ -114,3 +114,6 @@ Done: MouseDrag1Pane binding had `\"` inside '...' (literal since tmux 3.0); bra
 
 ## 2026-10-07 — tmux dim inactive panes
 Done: window-style / window-active-style added. Two traps: colour234 ≈ iTerm2 dark bg (#15191f) → invisible; `window-active-style bg=default` inherits window-style since tmux 3 → active pane dimmed too, terminal colours hardcoded instead (fg #dcdcdc, bg #15191f). Inactive settled at #353d48 / #a6acb6 after 3 live rounds. Light macOS theme would need the inverse. Merged feature/tmux-dim-inactive-panes → develop.
+
+## 2026-10-07 (pm) — repo-sync: multi-forge repo tree
+Done: `bin/repo-sync` (gitlab/github/gitea/bitbucket cloud via curl+jq, daily cache, mkdir lock, dedup ns/project) + `repo` fn/completion in 3 rc files + install.sh jq + docs. Port of Alphalink dotfiles `repo`/`repo-reset`. Stub-curl harness caught token shift (IFS tab merges empty field); live GitLab 139 projects in 3s. Decided (chat): name `repo-sync`, tokens in `~/.config/repos/forges.conf` 0600, root `~/repos`, Bitbucket Cloud only. On feature/repo-sync, not finished. BDR/LRN offered, not written.
