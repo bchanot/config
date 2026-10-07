@@ -345,18 +345,19 @@ install_colima_docker() {
 	start_brew_service colima
 }
 
-# macOS login shell: bash (brew's bash 5 + bashrc-osx) or zsh (oh-my-zsh +
-# zshrc-osx). MACOS_SHELL=bash|zsh answers in advance; with no terminal attached
-# and no answer, bash. Prints the choice on stdout (the question goes to stderr).
+# macOS login shell: zsh (oh-my-zsh + zshrc-osx, the macOS default) or bash
+# (brew's bash 5 + bashrc-osx). MACOS_SHELL=bash|zsh answers in advance; with no
+# terminal attached and no answer, zsh. Prints the choice on stdout (the question
+# goes to stderr).
 choose_macos_shell() {
 	local answer="${MACOS_SHELL:-}"
 	if [ -z "$answer" ] && [ -t 0 ]; then
-		read -rp "Login shell on macOS: bash or zsh (oh-my-zsh)? [bash] " answer || true
+		read -rp "Login shell on macOS: zsh (oh-my-zsh) or bash? [zsh] " answer || true
 	fi
 	case "$answer" in
-		zsh) echo zsh ;;
-		bash|"") echo bash ;;
-		*) echo "Unknown shell '$answer' — using bash" >&2; echo bash ;;
+		zsh|"") echo zsh ;;
+		bash) echo bash ;;
+		*) echo "Unknown shell '$answer' — using zsh" >&2; echo zsh ;;
 	esac
 }
 

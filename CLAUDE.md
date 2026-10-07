@@ -44,8 +44,8 @@ cloudpex/{cloudpex,install.sh,README.md} on-demand SMB mount helper → /usr/loc
 install.sh offers to mask `tmp.mount`. Swap is not the fix (the cap and ENOSPC stay).
 
 macOS: install.sh swaps apt-get for Homebrew (colima for Docker, brew services for
-code-server/mariadb, `~/.bash_profile` → `~/.bashrc`), asks bash or zsh (`MACOS_SHELL`
-presets it; zsh = oh-my-zsh + `zsh/` files, bash = brew bash 5) and prints the Linux-only
+code-server/mariadb, `~/.bash_profile` → `~/.bashrc`), asks zsh or bash (zsh by default,
+`MACOS_SHELL` presets it; zsh = oh-my-zsh + `zsh/` files, bash = brew bash 5) and prints the Linux-only
 items it skipped. Keep `bashrc-osx` = `bashrc-linux` + macOS deltas only, and the zsh
 files in step with them (same env, aliases, prompt).
 
