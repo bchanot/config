@@ -111,3 +111,6 @@ Done: copy-mode-vi table had stock C-h cursor-left, C-u halfpage-up, C-j copy, s
 
 ## 2026-10-06 (pm, 8) — tmux drag "syntax error" in claude panes
 Done: MouseDrag1Pane binding had `\"` inside '...' (literal since tmux 3.0); branch for mouse-tracking panes (claude fullscreen, vim mouse=a) failed to parse → "syntax error", no selection. Backslashes dropped, pitfall noted in conf. Deployed to ~/.config/tmux/tmux.conf + source-file, live binding verified (`forwarded-to-app`). Merged bugfix/tmux-drag-syntax-error → develop (2245247). Closes the "deployed conf stale" open item.
+
+## 2026-10-07 — tmux dim inactive panes
+Done: window-style / window-active-style added. Two traps: colour234 ≈ iTerm2 dark bg (#15191f) → invisible; `window-active-style bg=default` inherits window-style since tmux 3 → active pane dimmed too, terminal colours hardcoded instead (fg #dcdcdc, bg #15191f). Inactive settled at #353d48 / #a6acb6 after 3 live rounds. Light macOS theme would need the inverse. Merged feature/tmux-dim-inactive-panes → develop.
