@@ -135,3 +135,7 @@ Port of the Alphalink dotfiles `repo` / `repo-reset` zsh functions, bash + zsh, 
 - [x] README.md (table + CLI section) + CLAUDE.md layout
 - [x] shellcheck + bash -n; stub-curl harness per forge (fixtures), live GitLab run
 - [ ] commit on feature branch; registries. No finish without explicit signal.
+
+## Feature — gitflow.autopush asked at install, written to ~/.gitconfig (2026-10-07)
+Branch: feature/gitconfig-autopush (off develop). Plan: .claude/tasks/plans/2026-10-07-gitconfig-autopush-1734.md
+- [ ] /feat run: gitconfig `[gitflow] autopush = @AUTOPUSH@` + fixed `core.hooksPath`; install.sh `resolve_autopush` (exact true/false: existing ~/.gitconfig value via sed → DOTFILES_GITFLOW_AUTOPUSH (bad value aborts) → prompt re-asks → true), deploy_gitconfig takes name/email/autopush (fixes `name = @USER@` deployed from the template path) + fail-closed leak check; README/CLAUDE.md; oracle harness .claude/tasks/contracts/check-autopush-render.sh
