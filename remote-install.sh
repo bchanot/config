@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
 # remote-install.sh — one-liner bootstrap: clone this repo, then run install.sh.
 # Usage:
-#   curl -fsSL https://git.bchanot.fr/bchanot/config/raw/branch/master/remote-install.sh | bash
+#   curl -fsSL https://git.bchanot.fr/bchanot/config/raw/branch/main/remote-install.sh | bash
 # Override defaults with env vars:
 #   REPO_URL=...  CLONE_DIR=...  BRANCH=...  curl ... | bash
 set -euo pipefail
 
 REPO_URL="${REPO_URL:-https://git.bchanot.fr/bchanot/config.git}"
 CLONE_DIR="${CLONE_DIR:-$HOME/config}"
-BRANCH="${BRANCH:-master}"
+BRANCH="${BRANCH:-main}"
 
 # git is required to fetch the repo. Install it on Debian/Ubuntu, else bail with a hint.
 if ! command -v git >/dev/null 2>&1; then
@@ -36,6 +36,12 @@ else
 	git clone --quiet --branch "$BRANCH" "$REPO_URL" "$CLONE_DIR"
 fi
 
-# Hand off to the OS-detecting installer.
+# Hand off to the OS-detecting installer. Piped into bash, stdin is the script
+# itself, so install.sh would see no terminal and skip every question (identity,
+# macOS shell, offers). Give it the terminal back when there is one.
 echo "Running install.sh"
-bash "$CLONE_DIR/install.sh"
+if ( : </dev/tty ) 2>/dev/null; then
+	bash "$CLONE_DIR/install.sh" </dev/tty
+else
+	bash "$CLONE_DIR/install.sh"
+fi
