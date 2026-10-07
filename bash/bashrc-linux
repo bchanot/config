@@ -130,6 +130,27 @@ alias cc='dtach_claude'
 # Rappeler a la demande le menu de reprise.
 alias d='source ~/.local/bin/dtach-router'
 
+# repo-sync : un arbre local (~/repos) pour tous les depots des forges declarees
+# dans ~/.config/repos/forges.conf. `repo <projet> [namespace]` clone si besoin
+# puis s'y place ; la liste se rafraichit en arriere-plan, au plus 1 fois par jour.
+repo() {
+	local dir
+	dir="$(repo-sync path "$@")" && cd "$dir" || return
+}
+_repo_complete() {
+	local cache="${REPOS_CACHE:-${XDG_CACHE_HOME:-$HOME/.cache}/repos/list}" words
+	[ -f "$cache" ] || return 0
+	if [ "$COMP_CWORD" -eq 1 ]; then
+		words="$(cut -f1 "$cache" | sort -u)"
+	else
+		words="$(awk -F'\t' -v p="${COMP_WORDS[1]}" '$1 == p { print $2 }' "$cache")"
+	fi
+	# shellcheck disable=SC2207
+	COMPREPLY=($(compgen -W "$words" -- "${COMP_WORDS[COMP_CWORD]}"))
+}
+complete -F _repo_complete repo
+case $- in *i*) command -v repo-sync >/dev/null && (repo-sync refresh --quiet >/dev/null 2>&1 &) ;; esac
+
 # Au demarrage d'un shell interactif, proposer de reprendre une session dtach existante
 # (silencieux si aucune). Place ici plutot que dans ~/.profile car les terminaux VS Code
 # Remote-SSH sont non-login et ne lisent pas ~/.profile ; ~/.bashrc, lui, est toujours lu.

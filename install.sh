@@ -307,7 +307,7 @@ install_brew_packages() {
 	brew upgrade
 	brew install \
 		vim git git-lfs git-filter-repo gitleaks pkgconf shellcheck gh git-delta \
-		curl gnupg lftp inetutils \
+		curl gnupg lftp inetutils jq \
 		unzip tree tmux fzf dtach \
 		node python pipx php \
 		mariadb imagemagick \
@@ -596,7 +596,7 @@ if command -v apt-get >/dev/null 2>&1; then
 	# follow the distro's PHP version instead of pinning php8.x-*.
 	sudo apt-get install -y \
 		vim git git-lfs git-filter-repo gitleaks gcc make pkg-config dkms valgrind shellcheck git-delta \
-		curl gnupg ca-certificates apt-transport-https \
+		curl gnupg ca-certificates apt-transport-https jq \
 		unzip tree tmux fzf dtach net-tools \
 		openssh-server cifs-utils lftp ftp \
 		nodejs python3-pip pipx php-cli \
@@ -700,11 +700,12 @@ if command -v pipx >/dev/null 2>&1; then
 	pipx ensurepath >/dev/null
 fi
 
-# Deploy personal CLI scripts to ~/.local/bin (dt, dtach-router, claude-provider).
+# Deploy personal CLI scripts to ~/.local/bin (dt, dtach-router, claude-provider, repo-sync).
 echo "Deploying CLI scripts to ~/.local/bin"
 mkdir -p "$HOME/.local/bin"
 cp "$SCRIPT_DIR"/bin/* "$HOME/.local/bin/"
-chmod +x "$HOME"/.local/bin/dt "$HOME"/.local/bin/dtach-router "$HOME"/.local/bin/claude-provider
+chmod +x "$HOME"/.local/bin/dt "$HOME"/.local/bin/dtach-router \
+	"$HOME"/.local/bin/claude-provider "$HOME"/.local/bin/repo-sync
 
 
 # Remove any stale dtach wiring from ~/.profile (the menu now ships in ~/.bashrc; see above).

@@ -63,6 +63,28 @@ alias cc='dtach_claude'
 # Rappeler a la demande le menu de reprise.
 alias d='source ~/.local/bin/dtach-router'
 
+# repo-sync : un arbre local (~/repos) pour tous les depots des forges declarees
+# dans ~/.config/repos/forges.conf. `repo <projet> [namespace]` clone si besoin
+# puis s'y place ; la liste se rafraichit en arriere-plan, au plus 1 fois par jour.
+repo() {
+	local dir
+	dir="$(repo-sync path "$@")" && cd "$dir" || return
+}
+_repo() {
+	local cache="${REPOS_CACHE:-${XDG_CACHE_HOME:-$HOME/.cache}/repos/list}"
+	local -a items
+	[[ -f "$cache" ]] || return 0
+	if (( CURRENT == 2 )); then
+		items=(${(f)"$(cut -f1 "$cache" | sort -u)"})
+		_describe 'project' items
+	elif (( CURRENT == 3 )); then
+		items=(${(f)"$(awk -F'\t' -v p="$words[2]" '$1 == p { print $2 }' "$cache")"})
+		_describe 'namespace' items
+	fi
+}
+compdef _repo repo
+[[ -o interactive ]] && command -v repo-sync >/dev/null && (repo-sync refresh --quiet >/dev/null 2>&1 &)
+
 # Reglages propres a cette machine (non versionnes).
 [ -f "$HOME/.zshrc.local" ] && source "$HOME/.zshrc.local"
 

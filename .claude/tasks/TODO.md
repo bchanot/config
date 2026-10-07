@@ -123,3 +123,15 @@ Branch: feature/identity-prompt (off develop). Values were visible to anyone rea
 - [x] vim/vimrc: g:_author / g:_email from $USER / $EMAIL
 - [x] README, CLAUDE.md (CHANGELOG left to the release step, like the tmux work)
 - [x] Verify: shellcheck, bash -n, zsh -n; temp-HOME render (env preset, existing rc reuse); vim reads the env
+
+## Feature — repo-sync: one local tree for every reachable git repo, multi-forge (2026-10-07)
+Branch: feature/repo-sync (off develop). Design approved in chat: name `repo-sync`, tokens in
+`~/.config/repos/forges.conf` 0600 (never tracked), root `~/repos`, Bitbucket Cloud only.
+Port of the Alphalink dotfiles `repo` / `repo-reset` zsh functions, bash + zsh, Linux + macOS.
+- [x] bin/repo-sync — add / refresh (daily, mkdir lock) / list / tree / path / clone; curl + jq
+      fetchers for gitlab, github (+GHES), gitea/forgejo, bitbucket cloud; dedup namespace/project
+- [x] bash/bashrc-linux, bash/bashrc-osx, zsh/zshrc-osx — `repo` function (cd), completion, background refresh
+- [x] install.sh — jq in apt + brew lists, chmod repo-sync
+- [x] README.md (table + CLI section) + CLAUDE.md layout
+- [x] shellcheck + bash -n; stub-curl harness per forge (fixtures), live GitLab run
+- [ ] commit on feature branch; registries. No finish without explicit signal.

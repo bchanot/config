@@ -1,0 +1,358 @@
+#!/usr/bin/env bash
+# repo-sync — one local tree for every git repository you can reach on your
+# forges (GitLab, GitHub, Gitea/Forgejo, Bitbucket Cloud), with a daily cache.
+#
+#   repo-sync add                         register a forge (type, host, token)
+#   repo-sync refresh [--force] [--quiet] rebuild the cache if older than a day
+#   repo-sync list                        the cache: project, namespace, host
+#   repo-sync tree                        namespaces as a tree, project counts
+#   repo-sync path <project> [namespace]  clone if missing, print the local path
+#   repo-sync clone [--filter RE] [--pull] [--dry-run] [--https]   clone all
+#
+# Layout: $REPOS_DIR/<namespace with / as @>/<project>     (default ~/repos)
+# Forges: $REPOS_CONF, 0600, never tracked (default ~/.config/repos/forges.conf)
+#   [work]
+#   type = gitlab          gitlab | github | gitea | bitbucket
+#   host = gitlab.example.com
+#   token = glpat-...      bitbucket: user = <atlassian email>, token = api token
+# The token only lists projects; clones use ssh unless --https.
+# Same namespace/project on two forges: the first section wins. Archived
+# projects and mirrors are skipped.
+set -euo pipefail
+
+REPOS_DIR="${REPOS_DIR:-$HOME/repos}"
+REPOS_CONF="${REPOS_CONF:-$HOME/.config/repos/forges.conf}"
+REPOS_CACHE="${REPOS_CACHE:-${XDG_CACHE_HOME:-$HOME/.cache}/repos/list}"
+REPOS_CACHE_MINUTES="${REPOS_CACHE_MINUTES:-1440}"
+REPOS_CURL="${REPOS_CURL:-curl}"
+
+die() { echo "repo-sync: $*" >&2; exit 1; }
+usage() { sed -n '2,20p' "$0"; exit "${1:-0}"; }
+
+# ── forges.conf ──────────────────────────────────────────────────────────────
+
+# Parse the INI line by line (never sourced). One TSV line per section:
+# name  type  host  user  token   (an empty user is "-": tab-separated read
+# would otherwise merge two consecutive tabs and shift the token)
+forges() {
+	[ -f "$REPOS_CONF" ] || return 0
+	awk '
+		function flush() {
+			if (!name) return
+			if (user == "") user = "-"
+			printf "%s\t%s\t%s\t%s\t%s\n", name, type, host, user, token
+		}
+		/^[ \t]*\[/ {
+			flush()
+			name = $0; gsub(/^[ \t]*\[|\][ \t]*$/, "", name)
+			type = host = user = token = ""
+			next
+		}
+		/^[ \t]*(#|$)/ { next }
+		{
+			key = $0; sub(/[ \t]*=.*/, "", key); gsub(/[ \t]/, "", key)
+			val = $0; sub(/^[^=]*=[ \t]*/, "", val); sub(/[ \t]+$/, "", val)
+			if (key == "type") type = val
+			else if (key == "host") host = val
+			else if (key == "user") user = val
+			else if (key == "token") token = val
+		}
+		END { flush() }
+	' "$REPOS_CONF"
+}
+
+ask() {
+	local label="$1" default="${2:-}" value
+	if [ -n "$default" ]; then
+		read -r -p "$label [$default]: " value
+	else
+		read -r -p "$label: " value
+	fi
+	echo "${value:-$default}"
+}
+
+ask_secret() {
+	local value
+	read -r -s -p "$1: " value
+	echo >&2
+	[ -n "$value" ] || die "a token is required"
+	echo "$value"
+}
+
+cmd_add() {
+	[ -t 0 ] || die "add needs a terminal"
+	local name type host user="" token
+	name="$(ask "Name for this forge (e.g. work, home)")"
+	[[ "$name" =~ ^[A-Za-z0-9_-]+$ ]] || die "name: letters, digits, - and _ only"
+	type="$(ask "Type (gitlab|github|gitea|bitbucket)" gitlab)"
+	case "$type" in
+		gitlab|github|gitea|bitbucket) ;;
+		*) die "unknown type: $type" ;;
+	esac
+	case "$type" in
+		github) host="$(ask "Host" github.com)" ;;
+		bitbucket) host="bitbucket.org"; user="$(ask "Atlassian account email")" ;;
+		*) host="$(ask "Host (e.g. git.example.com)")" ;;
+	esac
+	[[ "$host" =~ ^[A-Za-z0-9.-]+$ ]] || die "host: hostname only, no scheme"
+	token="$(ask_secret "Token (read scope on repositories)")"
+
+	mkdir -p "$(dirname "$REPOS_CONF")"
+	( umask 077; touch "$REPOS_CONF" )
+	chmod 600 "$REPOS_CONF"
+	{
+		printf '\n[%s]\ntype = %s\nhost = %s\n' "$name" "$type" "$host"
+		[ -n "$user" ] && printf 'user = %s\n' "$user"
+		printf 'token = %s\n' "$token"
+	} >> "$REPOS_CONF"
+	echo "Saved to $REPOS_CONF"
+	cmd_refresh --force
+}
+
+# ── forge fetchers: each prints TSV "project  namespace  ssh_url  https_url" ─
+
+api() {
+	"$REPOS_CURL" -fsS --max-time 60 "$@"
+}
+
+# Page through a JSON-array endpoint: $1 = url without page, $2.. = curl auth.
+paged_array() {
+	local url="$1" page=1 body
+	shift
+	while :; do
+		body="$(api "$@" "$url&page=$page")" || return 1
+		[ "$(printf '%s' "$body" | jq 'length')" -gt 0 ] || break
+		printf '%s\n' "$body"
+		page=$((page + 1))
+	done
+}
+
+fetch_gitlab() {
+	local host="$1" token="$2"
+	local url="https://$host/api/v4/projects"
+	url+="?membership=true&archived=false&per_page=100"
+	paged_array "$url" -H "PRIVATE-TOKEN: $token" |
+	jq -r '.[] | select(.mirror != true) |
+		[.path, .namespace.full_path, .ssh_url_to_repo, .http_url_to_repo] | @tsv'
+}
+
+fetch_github() {
+	local host="$1" token="$2" base="https://api.github.com"
+	[ "$host" = "github.com" ] || base="https://$host/api/v3"
+	local url="$base/user/repos?per_page=100"
+	url+="&affiliation=owner,collaborator,organization_member"
+	paged_array "$url" -H "Authorization: Bearer $token" \
+		-H "Accept: application/vnd.github+json" |
+	jq -r '.[] | select(.archived != true) |
+		[.name, .owner.login, .ssh_url, .clone_url] | @tsv'
+}
+
+fetch_gitea() {
+	local host="$1" token="$2"
+	paged_array "https://$host/api/v1/user/repos?limit=50" \
+		-H "Authorization: token $token" |
+	jq -r '.[] | select(.archived != true and .mirror != true) |
+		[.name, .owner.username, .ssh_url, .clone_url] | @tsv'
+}
+
+fetch_bitbucket() {
+	local user="$1" token="$2" body
+	local url="https://api.bitbucket.org/2.0/repositories?role=member&pagelen=100"
+	while [ -n "$url" ] && [ "$url" != "null" ]; do
+		body="$(api -u "$user:$token" "$url")" || return 1
+		printf '%s' "$body" | jq -r '.values[] |
+			[.slug, .workspace.slug,
+			 (.links.clone[] | select(.name == "ssh") | .href),
+			 (.links.clone[] | select(.name == "https") | .href)] | @tsv'
+		url="$(printf '%s' "$body" | jq -r '.next')"
+	done
+}
+
+fetch_forge() {
+	local name="$1" type="$2" host="$3" user="$4" token="$5"
+	case "$type" in
+		gitlab) fetch_gitlab "$host" "$token" ;;
+		github) fetch_github "$host" "$token" ;;
+		gitea) fetch_gitea "$host" "$token" ;;
+		bitbucket) fetch_bitbucket "$user" "$token" ;;
+		*) echo "repo-sync: [$name] unknown type '$type', skipped" >&2; return 0 ;;
+	esac | awk -F'\t' -v host="$host" -v OFS='\t' '{ print $1, $2, host, $3, $4 }'
+}
+
+# ── cache ────────────────────────────────────────────────────────────────────
+
+# Cache line: project  namespace  host  ssh_url  https_url
+# Dedup key = namespace/project, case-insensitive; first forge in the conf wins.
+fetch_all() {
+	local line name type host user token
+	while IFS=$'\t' read -r name type host user token; do
+		[ -n "$name" ] || continue
+		[ "$user" = "-" ] && user=""
+		fetch_forge "$name" "$type" "$host" "$user" "$token" ||
+			echo "repo-sync: [$name] $type on $host failed, skipped" >&2
+	done < <(forges) |
+	awk -F'\t' '{ key = tolower($2 "/" $1) } !seen[key]++' |
+	sort -t $'\t' -f -k2,2 -k1,1
+}
+
+cache_is_fresh() {
+	[ -f "$REPOS_CACHE" ] &&
+		[ -z "$(find "$REPOS_CACHE" -mmin "+$REPOS_CACHE_MINUTES" 2>/dev/null)" ]
+}
+
+# mkdir is atomic on every platform (flock is not on macOS); a lock older than
+# ten minutes is a crashed run.
+lock_cache() {
+	local lock="$REPOS_CACHE.lock"
+	[ -d "$lock" ] &&
+		find "$lock" -maxdepth 0 -mmin +10 -exec rmdir {} \; 2>/dev/null
+	mkdir "$lock" 2>/dev/null || return 1
+	# shellcheck disable=SC2064
+	trap "rmdir '$lock' 2>/dev/null" EXIT
+}
+
+cmd_refresh() {
+	local force=0 quiet=0 count
+	for arg in "$@"; do
+		case "$arg" in
+			--force) force=1 ;;
+			--quiet) quiet=1 ;;
+			*) die "refresh: unknown option $arg" ;;
+		esac
+	done
+	if [ ! -f "$REPOS_CONF" ]; then
+		[ "$quiet" = 1 ] && exit 0
+		die "no forge yet: run repo-sync add"
+	fi
+	[ "$force" = 1 ] || ! cache_is_fresh || exit 0
+	mkdir -p "$(dirname "$REPOS_CACHE")"
+	lock_cache || exit 0
+	fetch_all > "$REPOS_CACHE.tmp"
+	mv "$REPOS_CACHE.tmp" "$REPOS_CACHE"
+	count="$(wc -l < "$REPOS_CACHE" | tr -d ' ')"
+	[ "$quiet" = 1 ] || echo "$count projects in $REPOS_CACHE"
+}
+
+need_cache() {
+	[ -f "$REPOS_CACHE" ] || cmd_refresh --force >&2
+	[ -s "$REPOS_CACHE" ] || die "empty cache: check $REPOS_CONF"
+}
+
+cmd_list() {
+	need_cache
+	awk -F'\t' -v OFS='\t' '{ print $1, $2, $3 }' "$REPOS_CACHE" |
+		column -t -s $'\t'
+}
+
+cmd_tree() {
+	need_cache
+	awk -F'\t' '
+		{
+			n = split($2, parts, "/"); cur = ""
+			for (i = 1; i <= n; i++) {
+				parent = cur; cur = (cur ? cur "/" parts[i] : parts[i])
+				if (cur in seen) continue
+				seen[cur] = 1; kids[parent] = kids[parent] SUBSEP cur; name[cur] = parts[i]
+			}
+			leaf = cur "/" $1
+			kids[cur] = kids[cur] SUBSEP leaf; name[leaf] = $1; count[cur]++
+		}
+		function walk(node, prefix, last,    items, n, i, k, label) {
+			if (node != "") {
+				label = name[node]; if (count[node]) label = label " (" count[node] ")"
+				printf "%s%s%s\n", prefix, (last ? "└── " : "├── "), label
+				prefix = prefix (last ? "    " : "│   ")
+			}
+			n = split(kids[node], items, SUBSEP); k = 0
+			for (i = 1; i <= n; i++) if (items[i] != "") k++
+			for (i = 1; i <= n; i++) if (items[i] != "") walk(items[i], prefix, --k == 0)
+		}
+		END { walk("", "", 1) }
+	' "$REPOS_CACHE"
+}
+
+# ── clone ────────────────────────────────────────────────────────────────────
+
+local_path() { echo "$REPOS_DIR/${2//\//@}/$1"; }
+
+# Clone one cache line into its local path; pull it instead when --pull is set.
+sync_one() {
+	local project="$1" namespace="$2" url="$3" pull="$4" dry="$5" dest
+	dest="$(local_path "$project" "$namespace")"
+	if [ -d "$dest/.git" ]; then
+		[ "$pull" = 1 ] || return 0
+		echo "pull  $dest"
+		[ "$dry" = 1 ] || git -C "$dest" pull --ff-only --quiet ||
+			echo "  pull failed: $dest" >&2
+		return 0
+	fi
+	echo "clone $url -> $dest"
+	[ "$dry" = 1 ] && return 0
+	mkdir -p "$(dirname "$dest")"
+	git clone --quiet "$url" "$dest" || echo "  clone failed: $url" >&2
+}
+
+cmd_clone() {
+	local filter=. pull=0 dry=0 col=4 lines
+	while [ $# -gt 0 ]; do
+		case "$1" in
+			--filter) filter="$2"; shift ;;
+			--pull) pull=1 ;;
+			--dry-run) dry=1 ;;
+			--https) col=5 ;;
+			*) die "clone: unknown option $1" ;;
+		esac
+		shift
+	done
+	need_cache
+	lines="$(awk -F'\t' -v re="$filter" -v c="$col" -v OFS='\t' \
+		'$2 ~ re { print $1, $2, $c }' "$REPOS_CACHE")"
+	[ -n "$lines" ] || die "no project matches '$filter'"
+	echo "$(printf '%s\n' "$lines" | wc -l | tr -d ' ') projects, into $REPOS_DIR"
+	while IFS=$'\t' read -r project namespace url; do
+		sync_one "$project" "$namespace" "$url" "$pull" "$dry"
+	done <<< "$lines"
+}
+
+# Pick the cache line for a project: the given namespace, else the first one
+# without a dot (groups before personal namespaces like j.doe).
+resolve() {
+	local project="$1" namespace="${2:-}"
+	awk -F'\t' -v p="$project" -v ns="$namespace" '
+		$1 == p && (ns == "" || $2 == ns) {
+			if (!best || ($2 !~ /\./ && best ~ /\./)) { best = $2; line = $0 }
+		}
+		END { print line }
+	' "$REPOS_CACHE"
+}
+
+cmd_path() {
+	[ $# -ge 1 ] || usage 2
+	need_cache
+	local line project namespace ssh dest
+	line="$(resolve "$1" "${2:-}")"
+	[ -n "$line" ] || die "unknown project: $1${2:+ in $2}"
+	IFS=$'\t' read -r project namespace _ ssh _ <<< "$line"
+	dest="$(local_path "$project" "$namespace")"
+	if [ ! -d "$dest/.git" ]; then
+		echo "clone $ssh -> $dest" >&2
+		mkdir -p "$(dirname "$dest")"
+		git clone --quiet "$ssh" "$dest" >&2 ||
+			{ rmdir "$dest" 2>/dev/null; die "clone failed: $ssh"; }
+	fi
+	echo "$dest"
+}
+
+# ── dispatch ─────────────────────────────────────────────────────────────────
+
+command -v jq >/dev/null || die "jq is required"
+case "${1:-}" in
+	add) shift; cmd_add "$@" ;;
+	refresh) shift; cmd_refresh "$@" ;;
+	list) cmd_list ;;
+	tree) cmd_tree ;;
+	path) shift; cmd_path "$@" ;;
+	clone) shift; cmd_clone "$@" ;;
+	-h|--help|help) usage ;;
+	*) usage 2 ;;
+esac
