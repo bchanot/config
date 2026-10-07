@@ -5,6 +5,14 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: se
 
 ## [Unreleased]
 
+### Added
+- `install.sh` asks the gitflow push mode (`gitflow.autopush`, exactly `true` or `false`, Enter = `true`) and writes it to `~/.gitconfig`; an existing value is reused, `DOTFILES_GITFLOW_AUTOPUSH` presets it, any other preset aborts the install.
+- `gitconfig`: fixed `core.hooksPath = ~/.claude/githooks`.
+
+### Fixed
+- `~/.gitconfig` was deployed with the literal `@USER@` / `@EMAIL@` placeholders: the installer read the identity from the repo bashrc template instead of the answers.
+- An `&` in the name no longer corrupts the rendered identity on bash 5.2 and later (`patsub_replacement` turned off).
+
 ## [1.0.0] — 2026-10-06
 
 ### Added

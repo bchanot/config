@@ -2,6 +2,9 @@
 # install.sh — deploy the vim + bash dotfiles. OS is auto-detected.
 # Usage: ./install.sh
 set -euo pipefail
+# bash >= 5.2 expands `&` in ${var//pat/rep} replacements: an `&` in a name would
+# corrupt the rendered identity. No-op on bash 3.2.
+shopt -u patsub_replacement 2>/dev/null || true
 
 # Resolve the repo root so the script works from any working directory.
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -524,20 +527,75 @@ resolve_identity() {
 	printf '%s\n' "${value:-$default}"
 }
 
+# Ask the push question on the terminal until the answer is exactly true or false;
+# Enter (or EOF) = true. Prints the value.
+ask_autopush() {
+	local answer=""
+	while :; do
+		read -rp "Automatic push of commits by the gitflow hooks on this machine? [true/false] (default: true) " answer || true
+		case "${answer:-true}" in
+			true|false) printf '%s\n' "${answer:-true}"; return 0 ;;
+			*) echo "Answer exactly true or false." >&2 ;;
+		esac
+	done
+}
+
+# Push mode of the gitflow hooks (gitflow.autopush), exact true/false only: the
+# readers fail closed on anything else. Never asked twice: a true/false already in
+# ~/.gitconfig wins silently (read with sed, like rc_export_value, so a hand-set
+# value survives the redeploy; a non-exact spelling is named and re-asked), else
+# DOTFILES_GITFLOW_AUTOPUSH (anything but true/false aborts the install here,
+# before any file is touched, whatever ~/.gitconfig holds), else the prompt
+# on a terminal, else true (today's unset = auto). Prints the value.
+resolve_autopush() {
+	local value="" preset="${DOTFILES_GITFLOW_AUTOPUSH:-}"
+	case "$preset" in
+		true|false|"") ;;
+		*) echo "DOTFILES_GITFLOW_AUTOPUSH='$preset' — must be exactly true or false" >&2; return 1 ;;
+	esac
+	if [ -f "$HOME/.gitconfig" ]; then
+		value="$(sed -n 's/^[[:space:]]*autopush[[:space:]]*=[[:space:]]*//p' "$HOME/.gitconfig" | tail -n 1)"
+		case "$value" in
+			true|false) printf '%s\n' "$value"; return 0 ;;
+			"") ;;
+			*) echo "gitflow.autopush='$value' in ~/.gitconfig is not exactly true/false — asking again" >&2 ;;
+		esac
+	fi
+	if [ -n "$preset" ]; then printf '%s\n' "$preset"; return 0; fi
+	if [ -t 0 ]; then ask_autopush; else echo true; fi
+}
+
+# Print the gitconfig template with the identity ($1 name, $2 email) and the push
+# mode ($3) filled in. Fails, printing nothing, when the mode is not exactly
+# true/false or when @AUTOPUSH@ survives the render: a non-boolean
+# gitflow.autopush blocks every push, so a leaked placeholder is an outage.
+render_gitconfig() {
+	local name="$1" email="$2" autopush="$3" rendered
+	case "$autopush" in
+		true|false) ;;
+		*) echo "gitconfig render refused: push mode '$autopush' is not exactly true/false — nothing written" >&2; return 1 ;;
+	esac
+	rendered="$(render_identity_template "$SCRIPT_DIR/gitconfig" "$name" "$email")"
+	rendered="${rendered//@AUTOPUSH@/$autopush}"
+	case "$rendered" in
+		*@AUTOPUSH@*) echo "gitconfig render failed: @AUTOPUSH@ left in the output — nothing written" >&2; return 1 ;;
+	esac
+	printf '%s\n' "$rendered"
+}
+
 # Install the user-scope ~/.gitconfig (a repo's own .git/config still wins).
-# The identity is read from the USER/EMAIL exports of the deployed rc ($1), so
-# git and the shell agree. A ~/.gitconfig that differs is kept as
+# $1 $2 = the identity rendered into the rc, so git and the shell agree; $3 = the
+# gitflow push mode (true/false). A ~/.gitconfig that differs is kept as
 # ~/.gitconfig.backup-<date>, outside ~/Oldconfig which every run wipes.
-# Idempotent: an identical ~/.gitconfig is left alone.
+# Idempotent: an identical ~/.gitconfig is left alone. Two fail-closed checks
+# live in render_gitconfig: exact push mode, no leaked placeholder.
 deploy_gitconfig() {
-	local rc="$1" name email rendered backup
-	name="$(rc_export_value USER "$rc")"
-	email="$(rc_export_value EMAIL "$rc")"
+	local name="$1" email="$2" autopush="$3" rendered backup
 	if [ -z "$name" ] || [ -z "$email" ]; then
-		echo "USER/EMAIL not exported by $rc — skipping ~/.gitconfig" >&2
+		echo "Name or email empty — skipping ~/.gitconfig (push mode $autopush not written)" >&2
 		return 0
 	fi
-	rendered="$(render_identity_template "$SCRIPT_DIR/gitconfig" "$name" "$email")"
+	rendered="$(render_gitconfig "$name" "$email" "$autopush")" || return 1
 	if printf '%s\n' "$rendered" | cmp -s - "$HOME/.gitconfig"; then
 		echo "$HOME/.gitconfig already up to date — skipping"
 		return 0
@@ -547,7 +605,7 @@ deploy_gitconfig() {
 		echo "Saving the current ~/.gitconfig to $backup"
 		mv "$HOME/.gitconfig" "$backup"
 	fi
-	echo "Deploying gitconfig to ~/.gitconfig ($name <$email>)"
+	echo "Deploying gitconfig to ~/.gitconfig ($name <$email>, autopush=$autopush)"
 	printf '%s\n' "$rendered" > "$HOME/.gitconfig"
 }
 
@@ -584,6 +642,7 @@ EOF
 identity_name="$(resolve_identity USER "Name for git commits and vim headers" "$(id -un)")"
 identity_email="$(resolve_identity EMAIL "Email for git commits and vim headers" "")"
 echo "Identity: $identity_name <${identity_email:-no email}>"
+autopush="$(resolve_autopush)"
 
 # System packages: apt-get on Debian/Ubuntu, Homebrew on macOS.
 if command -v apt-get >/dev/null 2>&1; then
@@ -684,8 +743,8 @@ fi
 echo "Deploying $bashrc ($identity_name <$identity_email>)"
 render_identity_template "$SCRIPT_DIR/$bashrc" "$identity_name" "$identity_email" > "$HOME/.bashrc"
 
-# User-scope git config, identity taken from the bashrc just deployed.
-deploy_gitconfig "$SCRIPT_DIR/$bashrc"
+# User-scope git config, same identity as the rc just rendered.
+deploy_gitconfig "$identity_name" "$identity_email" "$autopush"
 
 # tmux config + plugins (tmux comes from the apt or brew list above).
 if command -v tmux >/dev/null 2>&1; then

@@ -22,7 +22,8 @@ vim/autoload/         pathogen loader (committed)
 vim/colors/           molokai colorscheme (committed)
 bash/bashrc-{linux,osx}          OS-detected bashrc; USER/EMAIL identity = @USER@/@EMAIL@ placeholders,
                                  asked at install (reused from an existing rc), never tracked
-gitconfig                        user-scope ~/.gitconfig template, @USER@/@EMAIL@ filled at install
+gitconfig                        user-scope ~/.gitconfig template, @USER@/@EMAIL@/@AUTOPUSH@
+                                 (gitflow push mode, exact true/false) filled at install; core.hooksPath fixed
 tmux.conf                        tmux config (vi keys, tpm plugins) → ~/.config/tmux/tmux.conf, both OSes (tmux ≥ 3.1)
 zsh/{zshrc-osx,bchanot.zsh-theme}  macOS zsh option: oh-my-zsh zshrc + theme porting the bash prompt
 bin/{dt,dtach-router,claude-provider}   CLI scripts deployed to ~/.local/bin
