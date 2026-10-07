@@ -7,7 +7,7 @@ Personal dotfiles — vim + bash configuration and a one-shot installer.
 Install everything (clone + setup) with one command:
 
 ```sh
-curl -fsSL https://git.bchanot.fr/bchanot/config/raw/branch/master/remote-install.sh | bash
+curl -fsSL https://git.bchanot.fr/bchanot/config/raw/branch/main/remote-install.sh | bash
 ```
 
 (Runs a remote script through `bash` — see the [Install](#install) section for what it does and the manual alternative.)
@@ -43,10 +43,10 @@ curl -fsSL https://git.bchanot.fr/bchanot/config/raw/branch/master/remote-instal
 ### One-liner (clone + install)
 
 ```sh
-curl -fsSL https://git.bchanot.fr/bchanot/config/raw/branch/master/remote-install.sh | bash
+curl -fsSL https://git.bchanot.fr/bchanot/config/raw/branch/main/remote-install.sh | bash
 ```
 
-`remote-install.sh` ensures `git` is present, clones the repo to `~/config` (or pulls if already there), then runs `install.sh`. Override with env vars: `REPO_URL=... CLONE_DIR=... BRANCH=... curl ... | bash`.
+`remote-install.sh` ensures `git` is present, clones the repo to `~/config` (or pulls if already there), then runs `install.sh` with the terminal as its stdin, so the questions below (identity, macOS shell, offers) are asked even though the script arrives through a pipe. Override with env vars: `REPO_URL=... CLONE_DIR=... BRANCH=... curl ... | bash`.
 
 > Piping a remote script into `bash` runs unreviewed code over the network. Read [`remote-install.sh`](remote-install.sh) first, or use the manual clone below.
 
@@ -98,7 +98,7 @@ The script is re-runnable: each run re-backs up to `~/Oldconfig` (overwriting th
 
 ### macOS
 
-The same `./install.sh` detects macOS and replaces `apt-get` with Homebrew. It first asks which login shell you want, **bash** or **zsh** (`[bash]` by default; answer in advance with `MACOS_SHELL=zsh ./install.sh`, and with no terminal attached it picks bash):
+The same `./install.sh` detects macOS and replaces `apt-get` with Homebrew. It first asks which login shell you want, **zsh** or **bash** (`[zsh]` by default; answer in advance with `MACOS_SHELL=bash ./install.sh`, and with no terminal attached it picks zsh):
 
 1. Installs Homebrew with its official script when `brew` is missing (this also pulls the Xcode Command Line Tools: clang, make, git), then `brew update` + `brew upgrade`.
 2. Installs the apt list mapped to formulae: `vim git git-lfs git-filter-repo gitleaks pkgconf shellcheck gh git-delta curl gnupg lftp inetutils unzip tree tmux fzf dtach node python pipx php mariadb imagemagick ffmpeg weasyprint poppler qpdf webp libavif bash`. Brew's `php` already ships gd, mbstring, xml, intl, curl and mysql.
