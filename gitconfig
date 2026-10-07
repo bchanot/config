@@ -1,10 +1,14 @@
-# Template for the user-scope ~/.gitconfig, rendered by install.sh.
-# Git never expands $VARS: @USER@ and @EMAIL@ are replaced at install
-# time with the USER and EMAIL exported by the deployed bashrc.
-# A repo .git/config still overrides these values for that repo.
+# Template for the user-scope ~/.gitconfig, rendered by install.sh. Git never
+# expands $VARS, so the identity and the gitflow push mode are placeholders
+# filled at install time with the installer's answers. A repo .git/config
+# still overrides these values for that repo.
 [user]
     name = @USER@
     email = @EMAIL@
+[gitflow]
+    # Push mode of the gitflow hooks: false = manual, you run `git push`;
+    # true = every commit and merge is pushed. Exact true/false only (fail-closed).
+    autopush = @AUTOPUSH@
 [push]
     default = current
 [color]
@@ -15,6 +19,8 @@
     editor = vim
     pager = delta
     excludesfile = ~/.gitignore
+    # gitflow hooks (created by `make link` in claude-config); git expands ~ itself.
+    hooksPath = ~/.claude/githooks
 [advice]
     detachedHead = false
 [merge]
