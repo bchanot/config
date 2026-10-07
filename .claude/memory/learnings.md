@@ -108,3 +108,10 @@ locale = comma); no `date -d` → `date -j -f '%a %b %e %T %Y'` with `LC_ALL=C p
 `lsof -a -p PID -d cwd -Fn`. bash 3.2 `${x/#$HOME/\~}` keeps backslash → use var `tilde='~'`. BSD sed no `\?` in BRE
 → `sed -E`. Terminal.app = LOGIN shells → read ~/.bash_profile only → must source ~/.bashrc. `ls --color` → `ls -G`.
 zsh: `status` is read-only special var, don't name locals that. Verify installer fns via stub harness (LRN-011).
+
+## LRN-015 — tmux pane styles: "default" in window-active-style inherits window-style
+2026-10-07. tmux ≥ 3: `window-active-style bg=default` = window-style bg, NOT terminal bg → active pane dimmed
+too. Dim inactive panes → active style must hardcode terminal fg/bg (iTerm2 dark: `fg=#dcdcdc,bg=#15191f`).
+Pick inactive bg far from terminal bg (colour234 ≈ #15191f → invisible). iTerm2 colours: plist
+`New Bookmarks[].Background Color (Dark)` when "separate light/dark" on + macOS dark mode, not `Background Color`.
+Tune live: `tmux set -g window-style ...` then copy to conf. Hardcoded bg = update when iTerm2 theme changes.
