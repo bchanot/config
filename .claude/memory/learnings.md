@@ -115,3 +115,12 @@ too. Dim inactive panes → active style must hardcode terminal fg/bg (iTerm2 da
 Pick inactive bg far from terminal bg (colour234 ≈ #15191f → invisible). iTerm2 colours: plist
 `New Bookmarks[].Background Color (Dark)` when "separate light/dark" on + macOS dark mode, not `Background Color`.
 Tune live: `tmux set -g window-style ...` then copy to conf. Hardcoded bg = update when iTerm2 theme changes.
+
+## LRN-016 — template passed where rendered file expected: placeholders pass every "non-empty" guard
+2026-10-07. install.sh:688 called `deploy_gitconfig "$SCRIPT_DIR/$bashrc"` (repo TEMPLATE) after identity went
+to `@USER@` placeholders; `rc_export_value` returned `@USER@`, non-empty → guard passed → every install wrote
+`name = @USER@`. Harness tested the function with hand-made rc, never the call site → green while broken. Found
+by plan-challenger reading `git log -L` on the call site. Apply: pass resolved values, not file paths, across a
+render boundary; oracle greps the call site (Case H) and asserts `! grep '@(USER|EMAIL|AUTOPUSH)@'` on output;
+reject placeholder-shaped values like empty ones. Bonus: `shopt -u patsub_replacement` before `${v//p/$r}` on
+bash ≥ 5.2 (`&` expands to match).

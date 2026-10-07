@@ -144,3 +144,14 @@ Resize mirrors it with prefix. Status: done (tmux.conf).
 copy-selection-and-cancel, `p` = paste-buffer, tmux hands the buffer to the terminal through OSC 52 (set-clipboard),
 reaches the local clipboard over ssh from iTerm2. xsel/xclip rejected: headless servers have no X display (xsel
 errors), xclip keeps STDOUT open and hangs tmux. Status: done.
+
+## BDR-019 — gitflow.autopush at install: sed read of ~/.gitconfig, exact true/false, bad preset aborts
+2026-10-07. Need: install asks push mode, renders `[gitflow] autopush` in gitconfig template. Chosen: existing
+value read with `sed` on `~/.gitconfig` (same shape as rc_export_value), reused only if exactly `true`/`false`;
+`DOTFILES_GITFLOW_AUTOPUSH` validated first, non-boolean → `return 1` → install aborts before any file touched;
+prompt re-asks until exact, Enter = true; no tty = true. `render_gitconfig` refuses non-boolean / leaked
+`@AUTOPUSH@`. Fixed `core.hooksPath = ~/.claude/githooks` in template (git expands `~`, `make link` owns dir).
+Rejected: `git config --bool` read (that command family denied to Claude session → oracle could not run; also
+XDG/system scopes not needed, installer writes ~/.gitconfig only); git boolean grammar / fr words (fail-open on
+"non", user wants strict). Deviation from BDR-012 "never abort": bad preset aborts, user's fail-closed call.
+Status: merged develop e4cf818.
