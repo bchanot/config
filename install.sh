@@ -173,8 +173,8 @@ offer_cloudpex() {
 # not needed (that line is for the ~/bin install from get.docker.com/rootless). The
 # setup tool writes ~/.config/systemd/user/docker.service, starts it and switches the
 # CLI to the "rootless" context; linger keeps the daemon up without a login session.
-# The rootful daemon is left as it is: the two coexist (the tool only refuses when
-# /var/run/docker.sock is writable by the user, i.e. docker group membership).
+# The rootful daemon is disabled first, as the docs recommend: one daemon, and the
+# tool refuses to run while /var/run/docker.sock is writable by the user anyway.
 # Idempotent: apt and the tool both skip what exists. Ubuntu-only (Docker apt repo).
 offer_docker_rootless() {
 	confirm "Set up rootless Docker for $(id -un) (daemon runs as your user)?" || return 0
@@ -182,8 +182,13 @@ offer_docker_rootless() {
 		echo "docker-ce-rootless-extras not installable (Docker apt repo missing?) — skipping" >&2
 		return 0
 	fi
+	if systemctl cat docker.service >/dev/null 2>&1; then
+		echo "Disabling the rootful Docker daemon (docker.service, docker.socket)"
+		sudo systemctl disable --now docker.service docker.socket
+		sudo rm -f /var/run/docker.sock
+	fi
 	if ! dockerd-rootless-setuptool.sh install; then
-		echo "rootless Docker setup failed — see the tool's output above, rootful Docker unchanged" >&2
+		echo "rootless Docker setup failed — see the tool's output above (rootful daemon is disabled)" >&2
 		return 0
 	fi
 	sudo loginctl enable-linger "$(id -un)"
