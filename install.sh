@@ -30,7 +30,8 @@ install_docker() {
 	echo "deb [arch=${arch} signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu ${codename} stable" |
 		sudo tee /etc/apt/sources.list.d/docker.list >/dev/null
 	sudo apt-get update
-	sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+	sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin \
+		docker-compose-plugin docker-ce-rootless-extras
 }
 
 # NVIDIA driver: only when an NVIDIA GPU is on the PCI bus (vendor id 10de), so the
@@ -164,6 +165,29 @@ unwire_dtach_profile() {
 offer_cloudpex() {
 	confirm "Install the cloudpex NAS mount helper (on-demand SMB mount)?" || return 0
 	bash "$SCRIPT_DIR/cloudpex/install.sh"
+}
+
+# Rootless Docker, on request: a second daemon running as the login user (no root,
+# no docker group), the docs' apt variant. docker-ce-rootless-extras ships
+# dockerd-rootless-setuptool.sh in /usr/bin, so the PATH export the docs mention is
+# not needed (that line is for the ~/bin install from get.docker.com/rootless). The
+# setup tool writes ~/.config/systemd/user/docker.service, starts it and switches the
+# CLI to the "rootless" context; linger keeps the daemon up without a login session.
+# The rootful daemon is left as it is: the two coexist (the tool only refuses when
+# /var/run/docker.sock is writable by the user, i.e. docker group membership).
+# Idempotent: apt and the tool both skip what exists. Ubuntu-only (Docker apt repo).
+offer_docker_rootless() {
+	confirm "Set up rootless Docker for $(id -un) (daemon runs as your user)?" || return 0
+	if ! sudo apt-get install -y uidmap dbus-user-session slirp4netns docker-ce-rootless-extras; then
+		echo "docker-ce-rootless-extras not installable (Docker apt repo missing?) — skipping" >&2
+		return 0
+	fi
+	if ! dockerd-rootless-setuptool.sh install; then
+		echo "rootless Docker setup failed — see the tool's output above, rootful Docker unchanged" >&2
+		return 0
+	fi
+	sudo loginctl enable-linger "$(id -un)"
+	echo "Rootless Docker ready: CLI context 'rootless' selected; the bashrc exports DOCKER_HOST when its socket exists."
 }
 
 # fail2ban: bans an IP on every port after repeated SSH failures. The sshd jail
@@ -776,6 +800,7 @@ if command -v apt-get >/dev/null 2>&1; then
 	offer_tmp_on_disk
 	offer_ssh_memory_guard
 	offer_cloudpex
+	offer_docker_rootless
 fi
 
 # macOS: login shells skip ~/.bashrc unless ~/.bash_profile sources it (kept even
