@@ -139,3 +139,12 @@ Port of the Alphalink dotfiles `repo` / `repo-reset` zsh functions, bash + zsh, 
 ## Feature — gitflow.autopush asked at install, written to ~/.gitconfig (2026-10-07)
 Branch: feature/gitconfig-autopush (off develop). Plan: .claude/tasks/plans/2026-10-07-gitconfig-autopush-1734.md
 - [ ] /feat run: gitconfig `[gitflow] autopush = @AUTOPUSH@` + fixed `core.hooksPath`; install.sh `resolve_autopush` (exact true/false: existing ~/.gitconfig value via sed → DOTFILES_GITFLOW_AUTOPUSH (bad value aborts) → prompt re-asks → true), deploy_gitconfig takes name/email/autopush (fixes `name = @USER@` deployed from the template path) + fail-closed leak check; README/CLAUDE.md; oracle harness .claude/tasks/contracts/check-autopush-render.sh
+
+## Feature — Docker rootless offered at install (2026-10-09)
+Branch: feature/docker-rootless (off develop). Mirrors the manual setup done on this machine
+(docs.docker.com/engine/security/rootless, apt variant: setuptool lives in /usr/bin, not ~/bin).
+- [x] install.sh: `docker-ce-rootless-extras` in the install_docker package list
+- [x] install.sh: offer_docker_rootless() — uidmap/dbus-user-session/slirp4netns + extras, setuptool install (no --force), enable-linger; rootful daemon disabled first
+- [x] bash/bashrc-linux: DOCKER_HOST exported only when the rootless socket exists (no PATH line: /usr/bin already on PATH)
+- [x] README.md: table row, step 2 packages, packages list, new offer step
+- [x] shellcheck + bash -n; commit on the feature branch. No finish without explicit signal.

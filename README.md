@@ -16,7 +16,7 @@ curl -fsSL https://git.bchanot.fr/bchanot/config/raw/branch/main/remote-install.
 
 | Path                 | Purpose                                                        |
 | -------------------- | -------------------------------------------------------------- |
-| `install.sh`         | Linux: installs apt packages + Docker + code-server + RDP (gnome-remote-desktop), backs up old config, deploys vim + bashrc (OS-detected), installs CLI scripts, pipx tools and a low-disk login warning; ends by offering three extras (`/tmp` on disk, SSH memory guard, the `cloudpex` NAS mount helper). macOS: same tooling through Homebrew (see [macOS](#macos)), deploys the tmux config, then prints what was not installed compared with Linux. |
+| `install.sh`         | Linux: installs apt packages + Docker + code-server + RDP (gnome-remote-desktop), backs up old config, deploys vim + bashrc (OS-detected), installs CLI scripts, pipx tools and a low-disk login warning; ends by offering four extras (`/tmp` on disk, SSH memory guard, the `cloudpex` NAS mount helper, rootless Docker). macOS: same tooling through Homebrew (see [macOS](#macos)), deploys the tmux config, then prints what was not installed compared with Linux. |
 | `tmux.conf`          | tmux config (vi keys, mouse, status bar, tpm plugins: resurrect + continuum session restore, window-name). Deployed on both OSes to `~/.config/tmux/tmux.conf` (tmux ≥ 3.1). |
 | `cloudpex/`          | On-demand SMB mount of a NAS share (`cloudpex` command + its installer, offered `[y/N]` at the end of a Linux install). Site values (host, share, SMB user, mount point, SMB version) are prompted at install and stored in `/etc/cloudpex.conf`, never in the script. French README inside. |
 | `etc/tmpfiles.d/tmp.conf` | Cleanup rules for a disk-backed `/tmp` (wiped at boot, 10-day purge). Deployed by the `/tmp` on disk offer. |
@@ -63,7 +63,7 @@ No argument — the OS is auto-detected.
 What it does:
 
 1. On Debian/Ubuntu, installs a set of CLI/dev packages via `apt-get` (see below). On macOS, Homebrew does it instead: see [macOS](#macos).
-2. Sets up Docker's official apt repo (Ubuntu) and installs the engine + compose plugin — skipped if `docker` is already present.
+2. Sets up Docker's official apt repo (Ubuntu) and installs the engine + compose plugin + rootless extras — skipped if `docker` is already present.
 3. Moves any existing `~/.vim`, `~/.vimrc`, `~/.bashrc`, `~/.Sublivim` to `~/Oldconfig`.
 4. Clones the `syntastic` and `nerdtree` vim plugins into `~/.vim/bundle/`.
 5. Copies the tracked vim files into `~/.vim` and symlinks `~/.vimrc`.
@@ -77,6 +77,7 @@ What it does:
 13. On Linux, installs the **security baseline**, always, no prompt: **fail2ban** (+ `nftables`) with `etc/fail2ban/jail.d/local.conf` (sshd jail reading the journal, bans the offending IP on every port so the SSH port does not matter, 5 failures in 10 min → 1 h ban, loopback and private LAN ranges never banned); **unattended-upgrades** enabled through `etc/apt/apt.conf.d/20auto-upgrades`; and the **sshd drop-in** `etc/ssh/sshd_config.d/20-hardening.conf` (`PermitRootLogin no`, `MaxAuthTries 3`, `LoginGraceTime 20`), checked with `sshd -t` and removed again if sshd rejects it, then `reload ssh`. Authentication methods, port and user lists are left as they are.
 14. On Linux, at the very end, **offers** (`[y/N]`, skipped when no terminal is attached) to move **`/tmp` to disk**: Ubuntu mounts `/tmp` as a RAM-backed tmpfs capped at 50% of RAM, which agent runs fill, halving the RAM and breaking every shell with "No space left on device". Accepting masks `tmp.mount` and installs `etc/tmpfiles.d/tmp.conf` (wipe at boot, 10-day purge). Effective at the next reboot.
 15. On Linux, at the very end, **offers** to keep **SSH reachable under memory pressure**: installs the `ssh.service` drop-in (`OOMScoreAdjust=-1000`, `MemoryMin=256M`) and `earlyoom` with `etc/default/earlyoom` (kills the largest process, `node`/`java` first and never `sshd`, once free RAM and swap both drop under 10%). Restarting `ssh` keeps open sessions. Note: `MemoryMin` protects the sshd daemon only; login sessions live in `user.slice`, so no setting can reserve RAM for a future shell. earlyoom acting in time is the real protection.
+16. On Linux, at the very end, **offers** to set up **rootless Docker**: installs `uidmap dbus-user-session slirp4netns docker-ce-rootless-extras`, runs `dockerd-rootless-setuptool.sh install` as you (the apt package puts it in `/usr/bin`, so no `PATH` line is needed, unlike the `~/bin` install from `get.docker.com/rootless`), then `loginctl enable-linger` so the user daemon starts at boot. The tool creates `~/.config/systemd/user/docker.service` and switches the CLI to the `rootless` context; the deployed bashrc exports `DOCKER_HOST=unix://$XDG_RUNTIME_DIR/docker.sock` whenever that socket exists, for tools that ignore contexts. The rootful daemon is disabled first (`systemctl disable --now docker.service docker.socket`, socket removed), as the docs recommend: `docker` then only talks to your user daemon. Needs `/etc/subuid` and `/etc/subgid` entries for the user (Ubuntu adds them at user creation).
 
 ### Packages installed (apt)
 
@@ -86,12 +87,12 @@ What it does:
 - **Runtimes**: `nodejs python3-pip pipx php-cli`
 - **Web stack (local WordPress/LAMP)**: `mariadb-server imagemagick php-mysql php-gd php-imagick php-mbstring php-xml php-intl php-curl` (unversioned `php-*` metapackages, so they follow the distro's PHP)
 - **Media / doc CLI**: `ffmpeg weasyprint poppler-utils qpdf webp libavif-bin`
-- **Docker**: `docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin` (via Docker's repo)
+- **Docker**: `docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin docker-ce-rootless-extras` (via Docker's repo)
 - **Desktop / GPU**: `ubuntu-desktop-minimal` (always, Linux) + the distro-recommended NVIDIA driver via `ubuntu-drivers install` (only when an NVIDIA GPU is detected)
 - **Remote access**: `gnome-remote-desktop openssl` (apt) + `code-server` (via its vendor install script, not apt) — RDP remote login + browser VS Code
 - **pipx**: `PyMuPDF` (`pymupdf`), `Markdown` (`markdown_py`)
 - **Security baseline (Linux, always)**: `fail2ban nftables unattended-upgrades`
-- **Optional (end-of-install offer, Linux)**: `earlyoom`
+- **Optional (end-of-install offer, Linux)**: `earlyoom`; `uidmap dbus-user-session slirp4netns` (rootless Docker)
 
 The script is re-runnable: each run re-backs up to `~/Oldconfig` (overwriting the previous backup), re-clones plugins, skips Docker if already installed, and re-deploys the `bin/` scripts.
 

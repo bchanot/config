@@ -16,6 +16,12 @@ case ":$PATH:" in
 	*) export PATH="$HOME/.local/bin:$PATH" ;;
 esac
 
+# Rootless Docker (install.sh offer): tools that ignore the CLI context (docker-py,
+# testcontainers...) need DOCKER_HOST; only set when the user daemon's socket exists.
+if [ -S "${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/docker.sock" ]; then
+	export DOCKER_HOST="unix://${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/docker.sock"
+fi
+
 # Set history size to unlimited
 if [[ $EUID == 0 ]] ; then
 	export HISTSIZE=0
