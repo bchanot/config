@@ -9,6 +9,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: se
 - `install.sh` asks the gitflow push mode (`gitflow.autopush`, exactly `true` or `false`, Enter = `true`) and writes it to `~/.gitconfig`; an existing value is reused, `DOTFILES_GITFLOW_AUTOPUSH` presets it, any other preset aborts the install.
 - `gitconfig`: fixed `core.hooksPath = ~/.claude/githooks`.
 - `tmux.conf`: move panes between windows — `J`/`L` join the marked pane below/beside, `S` swaps it with the current one, `(`/`)` (repeatable) move the pane to the previous/next slot.
+- `tmux.conf`: window tabs centred in the status bar (`absolute-centre`), with index, padding and a blank between tabs; the current tab bold on a light pill.
 
 ### Changed
 - `.githooks/post-commit` and `post-merge` fail closed on `gitflow.autopush`: an unreadable or non-boolean value means no push, with a named warning (was: silently treated as `true`).
