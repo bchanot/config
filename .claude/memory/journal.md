@@ -129,3 +129,6 @@ Done: `offer_docker_rootless()` (uidmap/dbus-user-session/slirp4netns/docker-ce-
 
 ## 2026-10-09 (2) — tmux pane moves + hooks fail-closed merged
 Done: `tmux.conf` J/L join-pane, S swap-pane, ( ) repeatable swap-pane -U/-D (AZERTY-friendly); CHANGELOG Unreleased (Added tmux, Changed hooks). Hooks fail-closed commit turned out identical to the one already on origin/develop via feature/docker-rootless (other machine): merged clean, net diff = tmux.conf + CHANGELOG only. feature/tmux-pane-moves-hooks-failclosed finished into develop on user signal. Manual push mode: develop ahead of origin by 3, user pushes. Note: docker-rootless landed without a CHANGELOG line.
+
+## 2026-10-09 (3) — tmux status tabs centred + widened
+Done: `status-justify absolute-centre`, separator ' ', window-status formats `  #I #W  ` (current bold on light pill). Applied live via `tmux set`, deployed copy to ~/.config/tmux/tmux.conf (install.sh cp semantics). User picked "pastilles larges" over 2-line bar. feature/tmux-status-tabs finished into develop on user signal; manual push, user pushes.
