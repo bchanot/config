@@ -1,0 +1,77 @@
+#!/usr/bin/env bash
+# tmux-copy-exit-keys: after a mouse selection, any unmodified key leaves
+# copy-mode (back to the prompt; the key itself is swallowed).
+#
+# tmux.conf sets the pane option @mouse_sel when a mouse drag ends in
+# copy-mode and clears it when the pane leaves copy-mode (pane-mode-changed
+# hook). This script wraps every unmodified copy-mode-vi key: marker set, the
+# key cancels copy-mode; marker unset (copy-mode opened from the keyboard or
+# the wheel), the key keeps its vi role. Keys with ctrl/alt are untouched.
+# tmux.conf runs it (run-shell) after the copy-mode bindings and the plugins:
+# it wraps the bindings as they stand, so it must come last. Re-runnable:
+# a key already wrapped is left alone. Needs bash 3.2 (macOS /bin/bash).
+set -euo pipefail
+
+TABLE=copy-mode-vi
+GUARD='if-shell -F "#{@mouse_sel}"'   # the wrapper as list-keys prints it
+
+# Every key a bare keypress can produce: letters, digits, ASCII punctuation,
+# the French AZERTY extras, named editing and navigation keys.
+plain_keys() {
+	printf '%s\n' {a..z} {A..Z} {0..9} \
+		'`' '~' '!' '@' '#' '$' '%' '^' '&' '*' '(' ')' '-' '_' '=' '+' \
+		'[' ']' '{' '}' "\\" '|' ';' ':' "'" '"' ',' '.' '<' '>' '/' '?' \
+		é è à ç ù § ° ² µ £ \
+		Space Enter Tab BSpace Escape Home End PPage NPage \
+		Up Down Left Right IC DC
+}
+
+# A key as the tmux config parser wants it (the form list-keys prints);
+# ~ included, else the parser expands it to $HOME.
+conf_key() {
+	case "$1" in
+	';' | '{' | '}' | '#' | '$' | '%' | '"' | "'" | "\\" | '~') printf '\\%s\n' "$1" ;;
+	*) printf '%s\n' "$1" ;;
+	esac
+}
+
+# Current bindings of TABLE as "key<TAB>command" lines, keys in conf form.
+# A -r (repeat) flag is dropped: no copy-mode key uses it.
+current_bindings() {
+	tmux list-keys -T "$TABLE" \
+		| sed -E "s/^bind-key +(-r +)?-T $TABLE +([^ ]+) +(.*)\$/\\2$(printf '\t')\\3/"
+}
+
+# The command bound to conf key $1 in the dump $2, empty when unbound.
+bound_command() {
+	awk -F '\t' -v k="$1" '$1 == k { print $2; exit }' "$2"
+}
+
+# One bind-key line per plain key: marker set, cancel; else the current role.
+emit_bindings() {
+	local dump="$1" key ck cmd
+	while IFS= read -r key; do
+		ck=$(conf_key "$key")
+		cmd=$(bound_command "$ck" "$dump")
+		case "$cmd" in "$GUARD"*) continue ;; esac
+		if [ -n "$cmd" ]; then
+			printf 'bind-key -T %s %s %s { send-keys -X cancel } { %s }\n' \
+				"$TABLE" "$ck" "$GUARD" "$cmd"
+		else
+			printf 'bind-key -T %s %s %s { send-keys -X cancel }\n' \
+				"$TABLE" "$ck" "$GUARD"
+		fi
+	done < <(plain_keys)
+}
+
+main() {
+	local dump fragment
+	dump=$(mktemp) && fragment=$(mktemp)
+	# shellcheck disable=SC2064  # expand now: the locals are gone at EXIT
+	trap "rm -f '$dump' '$fragment'" EXIT
+	current_bindings > "$dump"
+	emit_bindings "$dump" > "$fragment"
+	tmux source-file "$fragment"
+}
+
+main "$@"

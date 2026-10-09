@@ -148,3 +148,10 @@ Branch: feature/docker-rootless (off develop). Mirrors the manual setup done on 
 - [x] bash/bashrc-linux: DOCKER_HOST exported only when the rootless socket exists (no PATH line: /usr/bin already on PATH)
 - [x] README.md: table row, step 2 packages, packages list, new offer step
 - [x] shellcheck + bash -n; commit on the feature branch. No finish without explicit signal.
+
+## Feature — tmux: any bare key leaves copy-mode after a mouse selection (2026-10-09)
+Branch: feature/tmux-copy-exit-keys (off develop). Chosen in chat: only after a mouse drag (keyboard/wheel copy-mode keeps vi keys), key swallowed.
+- [x] bin/tmux-copy-exit-keys — wraps every unmodified copy-mode-vi key in `if -F '#{@mouse_sel}' {cancel} {orig}`, re-runnable, bash 3.2
+- [x] tmux.conf — MouseDragEnd1Pane sets `@mouse_sel` (both clipboard branches), pane-mode-changed hook clears it, run-shell after tpm
+- [x] install.sh chmod list + CLAUDE.md layout + README (bin table, step 8) + CHANGELOG
+- [x] Live test on the running server: marker → g exits; no marker → k stays, q exits; marker → C-u stays; script idempotent

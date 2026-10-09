@@ -788,12 +788,14 @@ if command -v pipx >/dev/null 2>&1; then
 	pipx ensurepath >/dev/null
 fi
 
-# Deploy personal CLI scripts to ~/.local/bin (dt, dtach-router, claude-provider, repo-sync).
+# Deploy personal CLI scripts to ~/.local/bin (dt, dtach-router, claude-provider, repo-sync,
+# tmux-copy-exit-keys).
 echo "Deploying CLI scripts to ~/.local/bin"
 mkdir -p "$HOME/.local/bin"
 cp "$SCRIPT_DIR"/bin/* "$HOME/.local/bin/"
 chmod +x "$HOME"/.local/bin/dt "$HOME"/.local/bin/dtach-router \
-	"$HOME"/.local/bin/claude-provider "$HOME"/.local/bin/repo-sync
+	"$HOME"/.local/bin/claude-provider "$HOME"/.local/bin/repo-sync \
+	"$HOME"/.local/bin/tmux-copy-exit-keys
 
 
 # Remove any stale dtach wiring from ~/.profile (the menu now ships in ~/.bashrc; see above).
