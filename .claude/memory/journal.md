@@ -135,3 +135,6 @@ Done: `status-justify absolute-centre`, separator ' ', window-status formats `  
 
 ## 2026-10-09 (4) — tmux: any bare key leaves copy-mode after a mouse selection
 Done: `bin/tmux-copy-exit-keys` (wraps 120 copy-mode-vi keys behind `@mouse_sel`, idempotent, bash 3.2), tmux.conf marker on MouseDragEnd1Pane + pane-mode-changed hook + run-shell after tpm, install.sh chmod, README/CLAUDE.md/CHANGELOG. Chosen: mouse-only scope, key swallowed. 6 headless tests pass, full conf reload OK. LRN-017. Session 12 window 0 (zsh) vanished during the run, not targeted by any command, flagged to user. Merged on signal; manual push.
+
+## 2026-10-09 (5) — tmux Alt+arrow window switch
+Done: `bind -n M-Left/M-Right previous/next-window` (status on, mirrors C-n/C-p). macOS: iTerm2 Option = Normal sends Esc b/f, so Cmd+arrow must be mapped by hand to `[1;3D`/`[1;3C` (profile Default); shadows iTerm2 tab switch on Cmd+arrow permanently, user informed. Merged on signal; manual push.
