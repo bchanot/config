@@ -138,3 +138,6 @@ Done: `bin/tmux-copy-exit-keys` (wraps 120 copy-mode-vi keys behind `@mouse_sel`
 
 ## 2026-10-09 (5) — tmux Alt+arrow window switch
 Done: `bind -n M-Left/M-Right previous/next-window` (status on, mirrors C-n/C-p). macOS: iTerm2 Option = Normal sends Esc b/f, so Cmd+arrow must be mapped by hand to `[1;3D`/`[1;3C` (profile Default); shadows iTerm2 tab switch on Cmd+arrow permanently, user informed. Merged on signal; manual push.
+
+## 2026-10-09 (6) — tmux Ctrl+Alt+arrow panes + README key-mapping table
+Done: `bind -n C-M-Up/Down/Left/Right select-pane` (root + copy-mode-vi, no vim pass-through). README "Terminal key mappings for tmux": iTerm2 Send Escape Sequence table (Cmd+arrow `[1;3D/C`, Ctrl+Cmd+arrow `[1;7A/B/D/C`), Linux notes (native, GNOME workspace shortcut may grab Ctrl+Alt+arrow, unverified). Merged on signal; manual push.
