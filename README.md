@@ -113,6 +113,21 @@ The same `./install.sh` detects macOS and replaces `apt-get` with Homebrew. Afte
    **zsh** chosen: installs oh-my-zsh with its official script (unattended, skipped if `~/.oh-my-zsh` exists), renders `zsh/zshrc-osx` into `~/.zshrc` (same identity as the bashrc) and deploys the `bchanot` theme to `~/.oh-my-zsh/custom/themes/`, then makes `/bin/zsh` the login shell. An existing `~/.zshrc` that differs from the repo's is saved as `~/.zshrc.backup-<date>` (outside `~/Oldconfig`, which every run wipes). Move your machine-specific lines (nvm, bun, tokens) into `~/.zshrc.local`: the deployed zshrc loads it.
 8. Ends with the list of what the Linux install has and this one does not: `gcc` (Apple clang answers to `gcc`), `valgrind`, `dkms`, `net-tools`, `openssh-server` and the RDP desktop (both built into macOS, switched on in System Settings > Sharing), `cifs-utils`, `php-imagick`, the NVIDIA driver, the disk-usage warning, `cloudpex`, the security baseline and the two end-of-install offers.
 
+### Terminal key mappings for tmux (by hand)
+
+`tmux.conf` binds Alt+arrow (switch window) and Ctrl+Alt+arrow (switch pane) without the prefix. Cmd is not a modifier a terminal forwards, so on macOS iTerm2 must send the xterm Alt sequences itself: Settings → Profiles → *Default* → Keys → Key Mappings → `+`, action **Send Escape Sequence** (iTerm2 adds the leading `Esc`). This shadows iTerm2's own Cmd+arrow tab switching in that profile; `⌘⇧[` / `⌘⇧]` and `⌘1`…`⌘9` still switch its tabs.
+
+| Shortcut | Sequence | tmux key | Action |
+|---|---|---|---|
+| `⌘←` | `[1;3D` | `M-Left` | previous window |
+| `⌘→` | `[1;3C` | `M-Right` | next window |
+| `⌃⌘↑` | `[1;7A` | `C-M-Up` | pane above |
+| `⌃⌘↓` | `[1;7B` | `C-M-Down` | pane below |
+| `⌃⌘←` | `[1;7D` | `C-M-Left` | pane left |
+| `⌃⌘→` | `[1;7C` | `C-M-Right` | pane right |
+
+Linux / PC keyboard: Alt+arrow and Ctrl+Alt+arrow send those sequences natively (GNOME Terminal, xterm, kitty, alacritty), nothing to map. Two things can still swallow them before tmux: the desktop (GNOME binds Ctrl+Alt+arrow to workspace switching: Settings → Keyboard → Shortcuts → Navigation, clear or change *Switch to workspace left/right*), and an SSH session from a Mac, where the keys are whatever the local iTerm2 mapping sends. Not verified on Linux yet.
+
 ### CLI scripts (`bin/`)
 
 Deployed to `~/.local/bin` (the deployed bashrc adds this dir to `PATH`):
