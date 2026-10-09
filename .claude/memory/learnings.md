@@ -124,3 +124,14 @@ by plan-challenger reading `git log -L` on the call site. Apply: pass resolved v
 render boundary; oracle greps the call site (Case H) and asserts `! grep '@(USER|EMAIL|AUTOPUSH)@'` on output;
 reject placeholder-shaped values like empty ones. Bonus: `shopt -u patsub_replacement` before `${v//p/$r}` on
 bash ≥ 5.2 (`&` expands to match).
+
+## LRN-017 — tmux: conf key names, list-keys, hooks, headless key tests
+2026-10-09. Found while building `bin/tmux-copy-exit-keys` (tmux 3.7c). (1) Key `~` in a sourced conf must be
+`\~`: parser tilde-expands bare `~` → key `/Users/x`, "unknown key". Same escape set as list-keys prints:
+`; { } # $ % " ' \ ~`. (2) `list-keys -T <table> <key>` does not filter in 3.7 (prints nothing, or whole table
+when key is `;`): dump the table once, grep/awk the key token. (3) Hooks (`pane-mode-changed`) run with the
+triggering pane as target: `set -pu @opt` needs no `-t`; `#{hook_pane}` quoting inside nested strings broke.
+(4) `send-keys <key>` to a pane in copy-mode dispatches through the mode key table → key-binding behaviour is
+testable headless on a scratch pane (`new-window -d -P -F '#{pane_id}'`, assert `#{pane_in_mode}`); address
+by pane id, window-name plugin renames `-n` names. (5) `\;` inside tmux.conf '...' stays literal, then splits
+a bind's command list when the string is parsed by if-shell: works, no need to convert to `{ }` blocks.
