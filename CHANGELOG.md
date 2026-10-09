@@ -10,6 +10,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: se
 - `gitconfig`: fixed `core.hooksPath = ~/.claude/githooks`.
 - `tmux.conf`: move panes between windows — `J`/`L` join the marked pane below/beside, `S` swaps it with the current one, `(`/`)` (repeatable) move the pane to the previous/next slot.
 - `tmux.conf`: window tabs centred in the status bar (`absolute-centre`), with index, padding and a blank between tabs; the current tab bold on a light pill.
+- `bin/tmux-copy-exit-keys` + `tmux.conf`: after a mouse selection any bare key leaves copy-mode and returns to the prompt (key swallowed); ctrl/alt keys, and copy-mode opened from the keyboard or the wheel, keep their vi role.
 
 ### Changed
 - `.githooks/post-commit` and `post-merge` fail closed on `gitflow.autopush`: an unreadable or non-boolean value means no push, with a named warning (was: silently treated as `true`).

@@ -132,3 +132,6 @@ Done: `tmux.conf` J/L join-pane, S swap-pane, ( ) repeatable swap-pane -U/-D (AZ
 
 ## 2026-10-09 (3) — tmux status tabs centred + widened
 Done: `status-justify absolute-centre`, separator ' ', window-status formats `  #I #W  ` (current bold on light pill). Applied live via `tmux set`, deployed copy to ~/.config/tmux/tmux.conf (install.sh cp semantics). User picked "pastilles larges" over 2-line bar. feature/tmux-status-tabs finished into develop on user signal; manual push, user pushes.
+
+## 2026-10-09 (4) — tmux: any bare key leaves copy-mode after a mouse selection
+Done: `bin/tmux-copy-exit-keys` (wraps 120 copy-mode-vi keys behind `@mouse_sel`, idempotent, bash 3.2), tmux.conf marker on MouseDragEnd1Pane + pane-mode-changed hook + run-shell after tpm, install.sh chmod, README/CLAUDE.md/CHANGELOG. Chosen: mouse-only scope, key swallowed. 6 headless tests pass, full conf reload OK. LRN-017. Session 12 window 0 (zsh) vanished during the run, not targeted by any command, flagged to user. Merged on signal; manual push.

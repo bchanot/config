@@ -27,6 +27,7 @@ gitconfig                        user-scope ~/.gitconfig template, @USER@/@EMAIL
 tmux.conf                        tmux config (vi keys, tpm plugins) → ~/.config/tmux/tmux.conf, both OSes (tmux ≥ 3.1)
 zsh/{zshrc-osx,bchanot.zsh-theme}  macOS zsh option: oh-my-zsh zshrc + theme porting the bash prompt
 bin/{dt,dtach-router,claude-provider}   CLI scripts deployed to ~/.local/bin
+bin/tmux-copy-exit-keys          run by tmux.conf at load: after a mouse selection any bare key leaves copy-mode
 bin/repo-sync                    multi-forge repo tree (gitlab/github/gitea/bitbucket cloud) → ~/repos, daily cache;
                                  tokens in ~/.config/repos/forges.conf (0600, never tracked); `repo` fn in the rc files
 etc/profile.d/disk-usage-warning.sh     login-time low-disk warning → /etc/profile.d (Linux only)
