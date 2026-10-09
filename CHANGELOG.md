@@ -12,6 +12,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: se
 - `tmux.conf`: window tabs centred in the status bar (`absolute-centre`), with index, padding and a blank between tabs; the current tab bold on a light pill.
 - `bin/tmux-copy-exit-keys` + `tmux.conf`: after a mouse selection any bare key leaves copy-mode and returns to the prompt (key swallowed); ctrl/alt keys, and copy-mode opened from the keyboard or the wheel, keep their vi role.
 - `tmux.conf`: Alt+Left/Right switch windows without the prefix (macOS: map Cmd+arrow in iTerm2 to the `[1;3D` / `[1;3C` escape sequences).
+- `tmux.conf`: Ctrl+Alt+arrow moves between panes without the prefix, in copy-mode too (macOS: map Ctrl+Cmd+arrow in iTerm2 to `[1;7A` `[1;7B` `[1;7D` `[1;7C`).
 
 ### Changed
 - `.githooks/post-commit` and `post-merge` fail closed on `gitflow.autopush`: an unreadable or non-boolean value means no push, with a named warning (was: silently treated as `true`).
