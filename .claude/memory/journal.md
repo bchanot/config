@@ -141,3 +141,6 @@ Done: `bind -n M-Left/M-Right previous/next-window` (status on, mirrors C-n/C-p)
 
 ## 2026-10-09 (6) — tmux Ctrl+Alt+arrow panes + README key-mapping table
 Done: `bind -n C-M-Up/Down/Left/Right select-pane` (root + copy-mode-vi, no vim pass-through). README "Terminal key mappings for tmux": iTerm2 Send Escape Sequence table (Cmd+arrow `[1;3D/C`, Ctrl+Cmd+arrow `[1;7A/B/D/C`), Linux notes (native, GNOME workspace shortcut may grab Ctrl+Alt+arrow, unverified). Merged on signal; manual push.
+
+## 2026-10-11 — desktop + RDP offered, WSL default no
+Done: `offer_desktop()` (desktop [Y/n] → RDP [Y/n], WSL → [y/N] + hint), `confirm` default arg, `is_wsl()`. Trigger: WSL install lost DNS mid-run after ubuntu-desktop-minimal (hypothesis: NetworkManager/systemd-resolved rewrote /etc/resolv.conf), fail2ban/whois fetch failed. 8-case stub harness OK, shellcheck clean. Branch feature/desktop-rdp-prompt, commit 5d60269, pushed, not merged.
