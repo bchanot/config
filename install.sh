@@ -235,21 +235,62 @@ harden_sshd() {
 	sudo systemctl reload ssh
 }
 
-# Yes/no prompt for the optional system changes offered at the end of the install.
-# Declines (returns 1) when no terminal is attached (curl | bash), so an offer is
-# skipped with a hint instead of blocking; re-run ./install.sh from a terminal to
-# get it offered again.
+# Yes/no prompt for the optional system changes. $2 is the default taken on Enter:
+# "n" (the default, offers shown [y/N]) or "y" (shown [Y/n]). With no terminal attached
+# (curl | bash) the default is applied without blocking: a declined offer is skipped
+# with a hint, re-run ./install.sh from a terminal to get it offered again.
 confirm() {
-	local answer=""
+	local answer="" default="${2:-n}"
 	if [ ! -t 0 ]; then
+		if [ "$default" = y ]; then
+			echo "No terminal attached, default yes: $1" >&2
+			return 0
+		fi
 		echo "Skipped (no terminal attached): $1" >&2
 		return 1
 	fi
-	read -rp "$1 [y/N] " answer || true
+	if [ "$default" = y ]; then
+		read -rp "$1 [Y/n] " answer || true
+	else
+		read -rp "$1 [y/N] " answer || true
+	fi
 	case "$answer" in
 		[yY]|[yY][eE][sS]) return 0 ;;
+		[nN]|[nN][oO]) return 1 ;;
+		"") [ "$default" = y ] ;;
 		*) return 1 ;;
 	esac
+}
+
+# WSL (Windows Subsystem for Linux): no GDM, no GNOME session, no RDP target — the
+# Windows side owns the display. Detected from the env var WSL sets, else the kernel
+# string.
+is_wsl() {
+	[ -n "${WSL_DISTRO_NAME:-}" ] || grep -qi microsoft /proc/version 2>/dev/null
+}
+
+# GNOME desktop (GDM + Shell, ubuntu-desktop-minimal, ~1.5 GB) and, on top of it, the
+# RDP remote login (gnome-remote-desktop, see setup_remote_desktop). Both asked, yes by
+# default: a headless server or a local workstation wants them, WSL does not — there
+# the default flips to no. The desktop pulls NetworkManager + systemd-resolved, which
+# on WSL rewrite /etc/resolv.conf and kill DNS mid-install, so declining is also what
+# keeps the rest of the install working. RDP needs a GNOME session: no desktop, no RDP.
+offer_desktop() {
+	local default=y
+	if is_wsl; then
+		echo "WSL detected: a GNOME desktop and RDP remote login are not useful here (Windows owns the display)."
+		default=n
+	fi
+	if ! confirm "Install the GNOME desktop (ubuntu-desktop-minimal, ~1.5 GB)?" "$default"; then
+		echo "GNOME desktop and RDP remote login skipped."
+		return 0
+	fi
+	sudo apt-get install -y ubuntu-desktop-minimal
+	if confirm "Set up RDP remote login (gnome-remote-desktop, port 3389)?" "$default"; then
+		setup_remote_desktop
+	else
+		echo "RDP remote login skipped."
+	fi
 }
 
 # /tmp on disk instead of the tmpfs Ubuntu mounts by default (RAM-backed, capped at
@@ -702,12 +743,8 @@ if command -v apt-get >/dev/null 2>&1; then
 	# id -un, not $USER: the deployed bashrc sets USER to the git/vim identity.
 	sudo systemctl enable --now "code-server@$(id -un)"
 
-	# GNOME desktop (GDM + Shell): the RDP remote login below needs a GNOME session
-	# to hand out; a bare server install has none. Ubuntu-only metapackage.
-	sudo apt-get install -y ubuntu-desktop-minimal
-
-	# Remote desktop (gnome-remote-desktop — see the function header for why not xrdp).
-	setup_remote_desktop
+	# GNOME desktop + RDP remote login, both offered ([Y/n]; [y/N] on WSL).
+	offer_desktop
 
 	# NVIDIA driver, only when an NVIDIA GPU is present.
 	install_nvidia_driver

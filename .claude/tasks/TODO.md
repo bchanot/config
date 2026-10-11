@@ -155,3 +155,13 @@ Branch: feature/tmux-copy-exit-keys (off develop). Chosen in chat: only after a 
 - [x] tmux.conf — MouseDragEnd1Pane sets `@mouse_sel` (both clipboard branches), pane-mode-changed hook clears it, run-shell after tpm
 - [x] install.sh chmod list + CLAUDE.md layout + README (bin table, step 8) + CHANGELOG
 - [x] Live test on the running server: marker → g exits; no marker → k stays, q exits; marker → C-u stays; script idempotent
+
+## Feature — desktop + RDP offered, not forced; WSL default no (2026-10-11)
+Branch: feature/desktop-rdp-prompt (off develop). Trigger: WSL install lost DNS mid-run
+after ubuntu-desktop-minimal (hypothesis: NetworkManager/systemd-resolved rewrote
+/etc/resolv.conf); desktop + RDP useless on WSL anyway.
+- [x] install.sh: `is_wsl()` (WSL_DISTRO_NAME or /proc/version)
+- [x] install.sh: `confirm` optional default `y` ([Y/n], no tty → default)
+- [x] install.sh: `offer_desktop()` — desktop [Y/n] then RDP [Y/n]; WSL → both default n with hint
+- [x] README step 11 + table + packages line; CHANGELOG Unreleased
+- [x] shellcheck + bash -n + stub harness for confirm defaults / WSL branch

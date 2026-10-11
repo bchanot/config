@@ -15,6 +15,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: se
 - `tmux.conf`: Ctrl+Alt+arrow moves between panes without the prefix, in copy-mode too (macOS: map Ctrl+Cmd+arrow in iTerm2 to `[1;7A` `[1;7B` `[1;7D` `[1;7C`).
 
 ### Changed
+- `install.sh`: the GNOME desktop (`ubuntu-desktop-minimal`) and the RDP remote login are now offered (`[Y/n]` each, RDP only after the desktop) instead of always installed; on WSL both default to no, since Windows owns the display and the desktop's NetworkManager/systemd-resolved rewrite `/etc/resolv.conf` and break DNS mid-install.
 - `.githooks/post-commit` and `post-merge` fail closed on `gitflow.autopush`: an unreadable or non-boolean value means no push, with a named warning (was: silently treated as `true`).
 
 ### Fixed
