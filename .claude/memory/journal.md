@@ -147,3 +147,6 @@ Done: `offer_desktop()` (desktop [Y/n] → RDP [Y/n], WSL → [y/N] + hint), `co
 
 ## 2026-10-12 — WSL DNS confirmed + sshd hardening abort fixed
 Done: WSL DNS root cause confirmed (ubuntu-desktop-minimal → systemd-resolved/NetworkManager rewrote resolv.conf); repair runbook (disable both, rm resolv.conf, `wsl --shutdown`) worked. Then install aborted at harden_sshd: `systemctl reload ssh` on inactive unit + `set -e`. Fix 64f06bb on bugfix/sshd-reload-inactive: `is-active` guard + `try-reload-or-restart`, `/run/sshd` created before `sshd -t` (Ubuntu 24.04: privsep dir exists only while ssh.service runs — challenge correctness MAJOR). Stub smoke both branches, shellcheck, semgrep PASS. Not merged.
+
+## 2026-10-12 (2) — Rust toolchain at install
+Done: `install_rust()` (rustup official script, user-level, stable + default profile + rust-analyzer/rust-src, `rustup update` on re-run, `--no-modify-path`), `libssl-dev`/`openssl@3`, 3 rc files source `~/.cargo/env` (if form, rc 0 when absent). Trigger: `~/.cargo` existed on this machine, nothing on PATH. Stub harness 2 paths + PATH dedup OK, shellcheck clean. Commit 7d62da4 on feature/rust-toolchain, pushed, not merged. zsh snippet untested (no zsh here), POSIX syntax.
