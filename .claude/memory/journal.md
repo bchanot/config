@@ -144,3 +144,6 @@ Done: `bind -n C-M-Up/Down/Left/Right select-pane` (root + copy-mode-vi, no vim 
 
 ## 2026-10-11 — desktop + RDP offered, WSL default no
 Done: `offer_desktop()` (desktop [Y/n] → RDP [Y/n], WSL → [y/N] + hint), `confirm` default arg, `is_wsl()`. Trigger: WSL install lost DNS mid-run after ubuntu-desktop-minimal (hypothesis: NetworkManager/systemd-resolved rewrote /etc/resolv.conf), fail2ban/whois fetch failed. 8-case stub harness OK, shellcheck clean. Branch feature/desktop-rdp-prompt, commit 5d60269, pushed, not merged.
+
+## 2026-10-12 — WSL DNS confirmed + sshd hardening abort fixed
+Done: WSL DNS root cause confirmed (ubuntu-desktop-minimal → systemd-resolved/NetworkManager rewrote resolv.conf); repair runbook (disable both, rm resolv.conf, `wsl --shutdown`) worked. Then install aborted at harden_sshd: `systemctl reload ssh` on inactive unit + `set -e`. Fix 64f06bb on bugfix/sshd-reload-inactive: `is-active` guard + `try-reload-or-restart`, `/run/sshd` created before `sshd -t` (Ubuntu 24.04: privsep dir exists only while ssh.service runs — challenge correctness MAJOR). Stub smoke both branches, shellcheck, semgrep PASS. Not merged.

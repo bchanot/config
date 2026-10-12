@@ -135,3 +135,15 @@ triggering pane as target: `set -pu @opt` needs no `-t`; `#{hook_pane}` quoting 
 testable headless on a scratch pane (`new-window -d -P -F '#{pane_id}'`, assert `#{pane_in_mode}`); address
 by pane id, window-name plugin renames `-n` names. (5) `\;` inside tmux.conf '...' stays literal, then splits
 a bind's command list when the string is parsed by if-shell: works, no need to convert to `{ }` blocks.
+
+## LRN-018 — systemctl under `set -e`: guard reload, create /run/sshd before `sshd -t`
+2026-10-12. Found fixing install.sh `harden_sshd` on WSL (commit 64f06bb). (1) Bare `systemctl reload <unit>`
+exits non-zero when unit inactive ("<unit> is not active, cannot reload.") → `set -e` kills installer. Guard:
+`if systemctl is-active --quiet <unit>; then sudo systemctl try-reload-or-restart <unit>; else echo ...; fi`.
+`try-reload-or-restart` exits 0 if unit stopped between check and call (no TOCTOU abort); `is-active` needs no
+sudo, inside `if` never trips `set -e`. `restart` on inactive unit starts it, different semantic. (2) Ubuntu 24.04
+(systemd 255): `/run/sshd` created only by ssh.service `RuntimeDirectory=sshd`, no tmpfiles rule (systemd ≥ 256
+adds `20-systemd-ssh-generator.conf`). sshd never started → `sudo sshd -t` fails "Missing privilege separation
+directory" → looks like config rejection. `sudo install -d -m 0755 /run/sshd` before `sshd -t`, idempotent.
+(3) WSL: no sshd running by default, unit socket-activated or never started → any installer "validate + reload"
+path must survive inactive unit. Stub `systemctl`/`sudo`/`sshd` on PATH in scratchpad to smoke both branches.

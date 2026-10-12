@@ -220,19 +220,25 @@ install_unattended_upgrades() {
 
 # sshd hardening drop-in (PermitRootLogin, MaxAuthTries, LoginGraceTime): only
 # settings that cannot lock anyone out; authentication methods stay untouched.
-# Validated with sshd -t before the reload. A rejected file is removed rather than
-# left in place, so sshd keeps starting on the next boot; the install goes on and
-# the warning tells you.
+# Validated with sshd -t (/run/sshd is created first so the check works without a
+# running sshd); the reload happens only when sshd is running. A rejected file is
+# removed rather than left in place, so sshd keeps starting on the next boot; the
+# install goes on and the warning tells you.
 harden_sshd() {
 	echo "Deploying sshd hardening drop-in"
 	sudo install -D -m 0644 "$SCRIPT_DIR/etc/ssh/sshd_config.d/20-hardening.conf" \
 		/etc/ssh/sshd_config.d/20-hardening.conf
+	sudo install -d -m 0755 /run/sshd
 	if ! sudo sshd -t; then
 		sudo rm -f /etc/ssh/sshd_config.d/20-hardening.conf
 		echo "sshd rejected 20-hardening.conf — removed, sshd config unchanged" >&2
 		return 0
 	fi
-	sudo systemctl reload ssh
+	if systemctl is-active --quiet ssh; then
+		sudo systemctl try-reload-or-restart ssh
+	else
+		echo "ssh.service not running — drop-in in place, applies at the next sshd start"
+	fi
 }
 
 # Yes/no prompt for the optional system changes. $2 is the default taken on Enter:

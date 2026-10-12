@@ -21,6 +21,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: se
 ### Fixed
 - `~/.gitconfig` was deployed with the literal `@USER@` / `@EMAIL@` placeholders: the installer read the identity from the repo bashrc template instead of the answers.
 - An `&` in the name no longer corrupts the rendered identity on bash 5.2 and later (`patsub_replacement` turned off).
+- `install.sh`: the sshd hardening step no longer aborts the install when `ssh.service` is inactive (WSL, sshd never started): `/run/sshd` is created before `sshd -t`, so a valid drop-in is no longer removed as rejected, and the reload (`try-reload-or-restart`) runs only when sshd is active.
 
 ## [1.0.0] — 2026-10-06
 
