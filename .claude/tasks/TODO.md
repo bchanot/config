@@ -165,3 +165,12 @@ after ubuntu-desktop-minimal (hypothesis: NetworkManager/systemd-resolved rewrot
 - [x] install.sh: `offer_desktop()` — desktop [Y/n] then RDP [Y/n]; WSL → both default n with hint
 - [x] README step 11 + table + packages line; CHANGELOG Unreleased
 - [x] shellcheck + bash -n + stub harness for confirm defaults / WSL branch
+
+## Feature — Rust toolchain installed at install (2026-10-12)
+Branch: feature/rust-toolchain (off develop). rustup official script, both OSes, as the user,
+`--no-modify-path` (the rc files source `~/.cargo/env` themselves); apt rustc too old, brew rust has no rustup.
+- [x] install.sh: `install_rust()` — rustup install (stable, default profile) or `rustup update` when present; `component add rust-analyzer rust-src`
+- [x] install.sh: `libssl-dev` (apt) / `openssl@3` (brew) so openssl-sys crates build
+- [x] bash/bashrc-linux, bash/bashrc-osx, zsh/zshrc-osx: source `~/.cargo/env` when present (PATH, dedup inside)
+- [x] README (step, packages lines, table), CHANGELOG Unreleased, CLAUDE.md layout line
+- [x] shellcheck + bash -n + stub harness (fresh HOME: install path, re-run path); commit on the branch, no finish without signal

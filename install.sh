@@ -386,12 +386,30 @@ install_brew_packages() {
 	brew upgrade
 	brew install \
 		vim git git-lfs git-filter-repo gitleaks pkgconf shellcheck gh git-delta \
-		curl gnupg lftp inetutils jq \
+		curl gnupg lftp inetutils jq openssl@3 \
 		unzip tree tmux fzf dtach \
 		node python pipx php \
 		mariadb imagemagick \
 		ffmpeg weasyprint poppler qpdf webp libavif \
 		bash
+}
+
+# Rust toolchain via rustup, as the user (never sudo), on both OSes: the apt rustc lags
+# stable by months and brew's rust ships no rustup. --no-modify-path: the rc files this
+# repo deploys source ~/.cargo/env themselves. Idempotent: an existing rustup is updated
+# instead of reinstalled; a component already present is a no-op.
+install_rust() {
+	local cargo_bin="$HOME/.cargo/bin"
+	if [ -x "$cargo_bin/rustup" ]; then
+		echo "Updating Rust toolchain (rustup update)"
+		"$cargo_bin/rustup" update
+	else
+		echo "Installing Rust toolchain (rustup, stable, default profile)"
+		curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \
+			| sh -s -- -y --no-modify-path --default-toolchain stable --profile default
+	fi
+	# default profile = rustc cargo rust-std rust-docs rustfmt clippy; add the IDE pair.
+	"$cargo_bin/rustup" component add rust-analyzer rust-src
 }
 
 # Start a Homebrew service at login, like systemctl enable --now. Skipped when
@@ -731,7 +749,7 @@ if command -v apt-get >/dev/null 2>&1; then
 	# follow the distro's PHP version instead of pinning php8.x-*.
 	sudo apt-get install -y \
 		vim git git-lfs git-filter-repo gitleaks gcc make pkg-config dkms valgrind shellcheck git-delta \
-		curl gnupg ca-certificates apt-transport-https jq \
+		curl gnupg ca-certificates apt-transport-https jq libssl-dev \
 		unzip tree tmux fzf dtach net-tools \
 		openssh-server cifs-utils lftp ftp \
 		nodejs python3-pip pipx php-cli \
@@ -830,6 +848,9 @@ if command -v pipx >/dev/null 2>&1; then
 	pipx install Markdown || pipx upgrade Markdown
 	pipx ensurepath >/dev/null
 fi
+
+# Rust toolchain (rustup, user-level, both OSes).
+install_rust
 
 # Deploy personal CLI scripts to ~/.local/bin (dt, dtach-router, claude-provider, repo-sync,
 # tmux-copy-exit-keys).

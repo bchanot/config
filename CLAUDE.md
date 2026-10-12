@@ -51,6 +51,9 @@ code-server/mariadb, `~/.bash_profile` → `~/.bashrc`), asks zsh or bash (zsh b
 items it skipped. Keep `bashrc-osx` = `bashrc-linux` + macOS deltas only, and the zsh
 files in step with them (same env, aliases, prompt).
 
+Rust comes from the official rustup script (`install_rust`, user-level, `--no-modify-path`); the
+rc files source `~/.cargo/env`. Never add `rustc`/`cargo` to the apt or brew lists.
+
 `pymupdf`/`markdown_py` are NOT tracked — they are pipx entry-point shims,
 recreated by `pipx install PyMuPDF Markdown` in install.sh.
 `claude-provider` reads `$OPENROUTER_API_KEY` from the env — never hardcode it (the
