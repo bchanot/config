@@ -6,6 +6,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: se
 ## [Unreleased]
 
 ### Added
+- `install.sh` installs the Rust toolchain on both OSes with the official `rustup` script (`stable`, default profile + `rust-analyzer` `rust-src`, `rustup update` on a re-run, `--no-modify-path`); the deployed bashrc/zshrc source `~/.cargo/env`. `libssl-dev` (apt) / `openssl@3` (brew) added for `openssl-sys` crates.
 - `install.sh` asks the gitflow push mode (`gitflow.autopush`, exactly `true` or `false`, Enter = `true`) and writes it to `~/.gitconfig`; an existing value is reused, `DOTFILES_GITFLOW_AUTOPUSH` presets it, any other preset aborts the install.
 - `gitconfig`: fixed `core.hooksPath = ~/.claude/githooks`.
 - `tmux.conf`: move panes between windows — `J`/`L` join the marked pane below/beside, `S` swaps it with the current one, `(`/`)` (repeatable) move the pane to the previous/next slot.

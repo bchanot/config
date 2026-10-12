@@ -35,6 +35,12 @@ case ":$PATH:" in
 	*) export PATH="$HOME/.local/bin:$PATH" ;;
 esac
 
+# Rust toolchain (install.sh, rustup): puts ~/.cargo/bin on PATH, dedup done by the env file.
+if [ -f "$HOME/.cargo/env" ]; then
+	# shellcheck source=/dev/null
+	. "$HOME/.cargo/env"
+fi
+
 # History: none for root, near-unlimited otherwise (zsh has no -1 = unlimited).
 if [[ $EUID == 0 ]] ; then
 	HISTSIZE=0
