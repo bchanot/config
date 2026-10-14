@@ -94,6 +94,17 @@ compdef _repo repo
 # Reglages propres a cette machine (non versionnes).
 [ -f "$HOME/.zshrc.local" ] && source "$HOME/.zshrc.local"
 
+# SSH interactif hors tmux (et hors terminal VS Code Remote-SSH) : entrer dans tmux,
+# session partagee "main" (rattachee si elle existe). Le shell lance dans tmux relit ce
+# fichier et ouvre le menu dtach ci-dessous ; quitter tmux ferme la connexion (exec).
+case $- in *i*)
+	if [ -n "${SSH_CONNECTION:-}" ] && [ -z "${TMUX:-}" ] \
+		&& [ "${TERM_PROGRAM:-}" != vscode ] && command -v tmux >/dev/null; then
+		exec tmux new-session -A -s main
+	fi
+	;;
+esac
+
 # Au demarrage d'un shell interactif, proposer de reprendre une session dtach existante
 # (silencieux si aucune).
 case $- in *i*) [ -x "$HOME/.local/bin/dtach-router" ] && . "$HOME/.local/bin/dtach-router" ;; esac

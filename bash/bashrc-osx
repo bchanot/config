@@ -173,6 +173,17 @@ _repo_complete() {
 complete -F _repo_complete repo
 case $- in *i*) command -v repo-sync >/dev/null && (repo-sync refresh --quiet >/dev/null 2>&1 &) ;; esac
 
+# SSH interactif hors tmux (et hors terminal VS Code Remote-SSH) : entrer dans tmux,
+# session partagee "main" (rattachee si elle existe). Le shell lance dans tmux relit ce
+# fichier et ouvre le menu dtach ci-dessous ; quitter tmux ferme la connexion (exec).
+case $- in *i*)
+	if [ -n "${SSH_CONNECTION:-}" ] && [ -z "${TMUX:-}" ] \
+		&& [ "${TERM_PROGRAM:-}" != vscode ] && command -v tmux >/dev/null; then
+		exec tmux new-session -A -s main
+	fi
+	;;
+esac
+
 # Au demarrage d'un shell interactif, proposer de reprendre une session dtach existante
 # (silencieux si aucune). Place ici plutot que dans ~/.profile car les terminaux VS Code
 # Remote-SSH sont non-login et ne lisent pas ~/.profile ; ~/.bashrc, lui, est toujours lu.
