@@ -174,3 +174,10 @@ Branch: feature/rust-toolchain (off develop). rustup official script, both OSes,
 - [x] bash/bashrc-linux, bash/bashrc-osx, zsh/zshrc-osx: source `~/.cargo/env` when present (PATH, dedup inside)
 - [x] README (step, packages lines, table), CHANGELOG Unreleased, CLAUDE.md layout line
 - [x] shellcheck + bash -n + stub harness (fresh HOME: install path, re-run path); commit on the branch, no finish without signal
+
+## Feature — SSH login enters tmux before dtach-router (2026-10-15)
+Branch: feature/tmux-before-router (off develop). User always runs tmux now, so the router
+menu at plain-SSH login had to be quit once, then reopened inside tmux. Approved in chat:
+shared session `main` (`new-session -A`), VS Code Remote-SSH excluded, all three rc files.
+- [x] bash/bashrc-linux, bash/bashrc-osx, zsh/zshrc-osx: interactive + SSH + not in tmux + not vscode → `exec tmux new-session -A -s main`, just before the router line
+- [x] shellcheck + bash -n + guard harness (env combos, tmux stubbed); zsh absent here, zsh block untested
