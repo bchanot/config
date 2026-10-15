@@ -147,3 +147,8 @@ adds `20-systemd-ssh-generator.conf`). sshd never started → `sudo sshd -t` fai
 directory" → looks like config rejection. `sudo install -d -m 0755 /run/sshd` before `sshd -t`, idempotent.
 (3) WSL: no sshd running by default, unit socket-activated or never started → any installer "validate + reload"
 path must survive inactive unit. Stub `systemctl`/`sudo`/`sshd` on PATH in scratchpad to smoke both branches.
+
+## LRN-019 — rc change merged is not live until redeployed
+Context: tmux-before-router merged in develop, SSH still showed dtach menu first. ~/.bashrc written only by install.sh (rendered template), predated merge.
+Pattern: after any bash/ or zsh/ edit, redeploy (install.sh, or render template and copy), then diff template vs deployed.
+Apply: "fix not working" after merge → diff deployed rc vs template first.
