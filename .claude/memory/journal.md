@@ -153,3 +153,6 @@ Done: `install_rust()` (rustup official script, user-level, stable + default pro
 
 ## 2026-10-15 — SSH login → tmux before dtach menu
 Done: 3 rc files exec `tmux new-session -A -s main` on interactive SSH (not in tmux, not vscode), before dtach-router; router now opens inside tmux. Stub-tmux harness OK on bash; zsh absent here, zsh block untested. Branch feature/tmux-before-router, not finished (needs signal).
+
+## 2026-10-15 (2) — tmux-before-router fix not live: ~/.bashrc never redeployed
+Done: feature merged in develop but ~/.bashrc predated it (only install.sh writes it); diff template vs deployed = tmux block only. User copied rendered template to ~/.bashrc; stub-tmux sim + real SSH login confirmed tmux opens before dtach menu. No repo code change.
