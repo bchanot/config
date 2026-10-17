@@ -195,6 +195,13 @@ offer_docker_rootless() {
 	echo "Rootless Docker ready: CLI context 'rootless' selected; the bashrc exports DOCKER_HOST when its socket exists."
 }
 
+# True when systemd is PID 1. WSL distros without systemd=true in /wsl.conf (and
+# containers) have none: apt still installs the packages, but every systemctl call
+# fails and set -e would abort the install.
+systemd_running() {
+	[ -d /run/systemd/system ]
+}
+
 # fail2ban: bans an IP on every port after repeated SSH failures. The sshd jail
 # reads the journal (works with or without /var/log/auth.log) and bans all ports,
 # so the port sshd listens on does not matter — the previous server's jail only
@@ -205,8 +212,12 @@ install_fail2ban() {
 	sudo apt-get install -y fail2ban nftables
 	sudo install -D -m 0644 "$SCRIPT_DIR/etc/fail2ban/jail.d/local.conf" \
 		/etc/fail2ban/jail.d/local.conf
-	sudo systemctl enable fail2ban
-	sudo systemctl restart fail2ban
+	if systemd_running; then
+		sudo systemctl enable fail2ban
+		sudo systemctl restart fail2ban
+	else
+		echo "systemd not running (WSL?) — fail2ban installed, not started. Enable systemd=true in /wsl.conf, then: sudo systemctl enable --now fail2ban" >&2
+	fi
 }
 
 # Automatic security updates: the file dpkg-reconfigure would write, deployed
@@ -339,6 +350,10 @@ offer_ssh_memory_guard() {
 	fi
 	if [ "$ssh_done" = 1 ] && [ "$oom_done" = 1 ]; then
 		echo "SSH memory guard already in place — skipping"
+		return 0
+	fi
+	if ! systemd_running; then
+		echo "systemd not running (WSL?) — SSH memory guard skipped" >&2
 		return 0
 	fi
 	confirm "Protect SSH under memory pressure (sshd OOM-exempt + earlyoom)?" || return 0
@@ -765,7 +780,11 @@ if command -v apt-get >/dev/null 2>&1; then
 		curl -fsSL https://code-server.dev/install.sh | sh
 	fi
 	# id -un, not $USER: the deployed bashrc sets USER to the git/vim identity.
-	sudo systemctl enable --now "code-server@$(id -un)"
+	if systemd_running; then
+		sudo systemctl enable --now "code-server@$(id -un)"
+	else
+		echo "systemd not running (WSL?) — code-server installed, not started" >&2
+	fi
 
 	# GNOME desktop + RDP remote login, both offered ([Y/n]; [y/N] on WSL).
 	offer_desktop
