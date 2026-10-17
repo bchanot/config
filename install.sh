@@ -279,6 +279,18 @@ confirm() {
 	esac
 }
 
+# fail2ban offer, yes by default ([Y/n]); on WSL the default flips to no: sshd is
+# rarely exposed there and, without systemd, the service cannot run anyway.
+offer_fail2ban() {
+	local default=y
+	is_wsl && default=n
+	if ! confirm "Install fail2ban (bans SSH brute-force IPs on every port)?" "$default"; then
+		echo "fail2ban skipped."
+		return 0
+	fi
+	install_fail2ban
+}
+
 # WSL (Windows Subsystem for Linux): no GDM, no GNOME session, no RDP target — the
 # Windows side owns the display. Detected from the env var WSL sets, else the kernel
 # string.
@@ -795,8 +807,8 @@ if command -v apt-get >/dev/null 2>&1; then
 	# Low-disk login warning (system-wide profile.d snippet).
 	install_disk_warning
 
-	# Security baseline: brute-force bans, automatic security updates, sshd limits.
-	install_fail2ban
+	# Security baseline: brute-force bans (offered), security updates, sshd limits.
+	offer_fail2ban
 	install_unattended_upgrades
 	harden_sshd
 elif [ "$(uname -s)" = "Darwin" ]; then
