@@ -34,7 +34,7 @@ etc/profile.d/disk-usage-warning.sh     login-time low-disk warning → /etc/pro
 etc/tmpfiles.d/tmp.conf                 disk-backed /tmp cleanup rules (offer: /tmp on disk)
 etc/systemd/ssh.service.d/override.conf sshd OOM-exempt drop-in (offer: SSH memory guard)
 etc/default/earlyoom                    earlyoom args, spare sshd / kill node first (same offer)
-etc/fail2ban/jail.d/local.conf          sshd jail: journal backend, all-ports ban, LAN ignored (always)
+etc/fail2ban/jail.d/local.conf          sshd jail: journal backend, all-ports ban, LAN ignored (offer, no on WSL)
 etc/apt/apt.conf.d/20auto-upgrades      unattended security upgrades on (always)
 etc/ssh/sshd_config.d/20-hardening.conf sshd limits that cannot lock out, sshd -t gated (always)
 cloudpex/{cloudpex,install.sh,README.md} on-demand SMB mount helper → /usr/local/bin, offered [y/N]; site values
