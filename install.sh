@@ -628,13 +628,17 @@ render_identity_template() {
 }
 
 # One identity value (USER or EMAIL, $1) for git commits, vim headers and the rc
-# exports. Never stored in the repo. An export already in ~/.bashrc or ~/.zshrc
-# wins silently (a re-run never asks twice), else IDENTITY_<VAR> from the
+# exports. Never stored in the repo. An export already in the rc of the running
+# shell ($SHELL, else the other rc) wins silently (a re-run never asks twice;
+# the env is not read: a fresh machine's $USER is the login name, which would
+# skip the prompt), else IDENTITY_<VAR> from the
 # environment, else a prompt ($2 label, $3 default) when a terminal is attached,
 # else the default. Prints the value.
 resolve_identity() {
 	local var="$1" label="$2" default="$3" value="" rc envvar="IDENTITY_$1"
-	for rc in "$HOME/.bashrc" "$HOME/.zshrc"; do
+	local rcs=("$HOME/.bashrc" "$HOME/.zshrc")
+	[ "$(basename "${SHELL:-}")" = zsh ] && rcs=("$HOME/.zshrc" "$HOME/.bashrc")
+	for rc in "${rcs[@]}"; do
 		[ -f "$rc" ] && value="$(rc_export_value "$var" "$rc")"
 		if [ -n "$value" ] && [ "$value" != "@$var@" ]; then
 			printf '%s\n' "$value"
