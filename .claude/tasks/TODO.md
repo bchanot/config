@@ -181,3 +181,10 @@ menu at plain-SSH login had to be quit once, then reopened inside tmux. Approved
 shared session `main` (`new-session -A`), VS Code Remote-SSH excluded, all three rc files.
 - [x] bash/bashrc-linux, bash/bashrc-osx, zsh/zshrc-osx: interactive + SSH + not in tmux + not vscode → `exec tmux new-session -A -s main`, just before the router line
 - [x] shellcheck + bash -n + guard harness (env combos, tmux stubbed); zsh absent here, zsh block untested
+
+## Feature — `openrouter` rc function replaces claude-provider (2026-10-28)
+Branch: feature/openrouter-toggle (off develop). Shell function (bash + zsh): `openrouter` on, `-d`/`-u` off, key from `$OPENROUTER_API_KEY`.
+- [x] bashrc-linux, bashrc-osx, zshrc-osx: `openrouter()`; snapshot of the 4 vars' prior values in `$_OPENROUTER_SAVED`, replayed on off
+- [x] log out / log in reminders on on / off
+- [x] remove bin/claude-provider + install.sh, README, CLAUDE.md refs; CHANGELOG Added/Removed
+- [x] bash -n + harness (quoted value restore, unset restore, not-active, double on); zsh block untested (zsh absent)

@@ -152,6 +152,59 @@ alias cc='dtach_claude'
 # Rappeler a la demande le menu de reprise.
 alias d='source ~/.local/bin/dtach-router'
 
+# openrouter : bascule Claude Code sur OpenRouter dans le shell courant (fonction, pas
+# script : un script ne peut pas modifier l'environnement de son parent). `openrouter`
+# active, `openrouter -d` (ou -u) desactive. La cle vient de $OPENROUTER_API_KEY, a
+# exporter depuis un fichier prive non versionne (~/.bashrc.local, ~/.zshrc.local).
+# Les valeurs qu'avaient deja ces variables sont gardees dans $_OPENROUTER_SAVED
+# (commandes export/unset) et rejouees a la desactivation.
+openrouter() {
+	local v saved=""
+	case "${1:-}" in
+	-d | -u)
+		if [ -n "${_OPENROUTER_SAVED+x}" ]; then
+			saved="$_OPENROUTER_SAVED"
+		elif [ "${ANTHROPIC_BASE_URL:-}" != "https://openrouter.ai/api" ]; then
+			echo "openrouter: not active"
+			return 0
+		fi
+		unset ANTHROPIC_BASE_URL ANTHROPIC_AUTH_TOKEN ANTHROPIC_API_KEY \
+			CLAUDE_CODE_ENABLE_GATEWAY_MODEL_DISCOVERY
+		eval "$saved"
+		unset _OPENROUTER_SAVED
+		echo "openrouter: off"
+		echo "Pensez a vous log in de Claude Code"
+		;;
+	"")
+		[ -n "${OPENROUTER_API_KEY:-}" ] || {
+			echo "openrouter: OPENROUTER_API_KEY is not set" >&2
+			return 1
+		}
+		if [ -z "${_OPENROUTER_SAVED+x}" ]; then
+			for v in ANTHROPIC_BASE_URL ANTHROPIC_AUTH_TOKEN ANTHROPIC_API_KEY \
+				CLAUDE_CODE_ENABLE_GATEWAY_MODEL_DISCOVERY; do
+				if printenv "$v" >/dev/null; then
+					saved="$saved export $v=$(printf %q "$(printenv "$v")");"
+				else
+					saved="$saved unset $v;"
+				fi
+			done
+			_OPENROUTER_SAVED="$saved"
+		fi
+		export ANTHROPIC_BASE_URL="https://openrouter.ai/api"
+		export ANTHROPIC_AUTH_TOKEN="$OPENROUTER_API_KEY"
+		export ANTHROPIC_API_KEY="" # doit etre explicitement vide
+		export CLAUDE_CODE_ENABLE_GATEWAY_MODEL_DISCOVERY=1
+		echo "openrouter: on"
+		echo "Pensez a vous logout de Claude Code"
+		;;
+	*)
+		echo "usage: openrouter [-d|-u]" >&2
+		return 1
+		;;
+	esac
+}
+
 # repo-sync : un arbre local (~/repos) pour tous les depots des forges declarees
 # dans ~/.config/repos/forges.conf. `repo <projet> [namespace]` clone si besoin
 # puis s'y place ; la liste se rafraichit en arriere-plan, au plus 1 fois par jour.

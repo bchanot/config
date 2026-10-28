@@ -6,6 +6,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: se
 ## [Unreleased]
 
 ### Added
+- `bashrc-linux`, `bashrc-osx`, `zshrc-osx`: `openrouter` function switches Claude Code to OpenRouter in the current shell (`openrouter` on, `openrouter -d`/`-u` off). Key from `$OPENROUTER_API_KEY`; values the four variables held before are saved and restored on off; a reminder to log out / log in of Claude Code is printed.
 - `install.sh` installs the Rust toolchain on both OSes with the official `rustup` script (`stable`, default profile + `rust-analyzer` `rust-src`, `rustup update` on a re-run, `--no-modify-path`); the deployed bashrc/zshrc source `~/.cargo/env`. `libssl-dev` (apt) / `openssl@3` (brew) added for `openssl-sys` crates.
 - `install.sh` asks the gitflow push mode (`gitflow.autopush`, exactly `true` or `false`, Enter = `true`) and writes it to `~/.gitconfig`; an existing value is reused, `DOTFILES_GITFLOW_AUTOPUSH` presets it, any other preset aborts the install.
 - `gitconfig`: fixed `core.hooksPath = ~/.claude/githooks`.
@@ -14,6 +15,9 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: se
 - `bin/tmux-copy-exit-keys` + `tmux.conf`: after a mouse selection any bare key leaves copy-mode and returns to the prompt (key swallowed); ctrl/alt keys, and copy-mode opened from the keyboard or the wheel, keep their vi role.
 - `tmux.conf`: Alt+Left/Right switch windows without the prefix (macOS: map Cmd+arrow in iTerm2 to the `[1;3D` / `[1;3C` escape sequences).
 - `tmux.conf`: Ctrl+Alt+arrow moves between panes without the prefix, in copy-mode too (macOS: map Ctrl+Cmd+arrow in iTerm2 to `[1;7A` `[1;7B` `[1;7D` `[1;7C`).
+
+### Removed
+- `bin/claude-provider` (wrote a file nothing sourced), replaced by the `openrouter` rc function. A copy already deployed in `~/.local/bin` is not deleted by the installer.
 
 ### Changed
 - `install.sh`: the GNOME desktop (`ubuntu-desktop-minimal`) and the RDP remote login are now offered (`[Y/n]` each, RDP only after the desktop) instead of always installed; on WSL both default to no, since Windows owns the display and the desktop's NetworkManager/systemd-resolved rewrite `/etc/resolv.conf` and break DNS mid-install.
