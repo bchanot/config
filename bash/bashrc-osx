@@ -139,13 +139,14 @@ PROMPT_COMMAND='set_prompt'
 ## Lancement des commandes au demarrages
 
 # claude-dans-dtach : creer une session (claude tournant dans dtach, detache via Ctrl-\).
+# Reprend la derniere conversation du dossier (--continue), sinon session neuve.
 # Usage : cd ~/projets/seo && cc seo   -> session nommee "seo".
 # Pas de systemd sur macOS : dtach est lance directement (pas de slice cgroup).
 dtach_claude() {
   local name="${1:-claude-$(date +%H%M%S)}"
   mkdir -p "$HOME/.dtach"
   dtach -c "$HOME/.dtach/${name}" -e '^\' \
-      bash -c 'set -a; [ -f "$HOME/.claude/.env" ] && . "$HOME/.claude/.env"; set +a; exec claude'
+      bash -c 'set -a; [ -f "$HOME/.claude/.env" ] && . "$HOME/.claude/.env"; set +a; claude --continue || exec claude'
 }
 alias cc='dtach_claude'
 
