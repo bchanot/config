@@ -156,3 +156,6 @@ Done: 3 rc files exec `tmux new-session -A -s main` on interactive SSH (not in t
 
 ## 2026-10-15 (2) — tmux-before-router fix not live: ~/.bashrc never redeployed
 Done: feature merged in develop but ~/.bashrc predated it (only install.sh writes it); diff template vs deployed = tmux block only. User copied rendered template to ~/.bashrc; stub-tmux sim + real SSH login confirmed tmux opens before dtach menu. No repo code change.
+
+## 2026-10-30
+- Memory registries → v2 (`memory.sh upgrade`, claude-config BDR-129 phase 4a): `check` green, open blockers unchanged.

@@ -1,3 +1,21 @@
+---
+format: 2
+type: blockers_registry
+entry_prefix: BLK
+schema:
+  id: BLK-XXX
+  date: YYYY-MM-DD
+  friction: string (what was blocked)
+  real_cause: string (root cause, not symptom)
+  solution: string (workaround or fix)
+  status: [open | resolved | upstream]
+rules:
+  - Open a blocker as soon as friction > 15 min wasted. Close it with a real cause, not "moved on".
+  - Link to upstream issue / PR / commit when applicable.
+  - If cause is a bug in a dependency, set status upstream with a pointer to the tracker.
+  - Entries in English, caveman format (BDR-009): drop articles + filler, fragments OK, technical terms exact.
+---
+
 # Blockers
 
 Friction + root cause + status. Caveman + English.
@@ -14,6 +32,7 @@ repo (remote git.bchanot.fr) would leak it. Root cause: key inlined in `write_op
 Fix: repo copy `bin/claude-provider` reads `${OPENROUTER_API_KEY:?...}` from env; key never in
 repo. Verified `git grep sk-or` clean. Status: resolved in repo. ACTION user: revoke old key at
 openrouter.ai (compromised — was in plaintext + exposed in chat).
+- **Status (2026-10-30, upgrade)**: resolved
 
 ## BLK-003 — xrdp block: `systemctl enable xrdb` typo aborted installer — RESOLVED
 2026-06-23. Uncommitted install.sh xrdp block had `sudo systemctl enable xrdb` (typo: `xrdb` = X
@@ -31,6 +50,7 @@ despite: daemon LISTEN *:3389, ufw inactive, TLS cert readable, service active. 
 PAM login at GDM. Empty gate creds → RDP nego refused before GDM → 0x904. Fix: set-credentials,
 connect (gate creds → GDM `bchanot`). Connection CONFIRMED live. Automated in install.sh via
 ensure_rdp_credentials (prompt, TTY-guarded, idempotent). Supersedes BLK-003 (xrdp). Status: resolved.
+- **Status (2026-10-30, upgrade)**: resolved
 
 ## BLK-005 — secrets still on NAS share: /mnt/cloudpex/transfert/root/ — OPEN (user action)
 2026-09-22. RECOVERY checklist 06 + doc 04: delete `CloudPex/transfert/root/` (root ssh keys, .smbcredentials,
