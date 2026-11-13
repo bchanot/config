@@ -11,6 +11,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: se
 - `install.sh` asks the gitflow push mode (`gitflow.autopush`, exactly `true` or `false`, Enter = `true`) and writes it to `~/.gitconfig`; an existing value is reused, `DOTFILES_GITFLOW_AUTOPUSH` presets it, any other preset aborts the install.
 - `gitconfig`: fixed `core.hooksPath = ~/.claude/githooks`.
 - `tmux.conf`: move panes between windows — `J`/`L` join the marked pane below/beside, `S` swaps it with the current one, `(`/`)` (repeatable) move the pane to the previous/next slot.
+- `tmux.conf`: `prefix` + `<` / `>` (repeatable) move the current window one slot left/right in the status bar, focus following it; replaces tmux's stock `<` window menu and `>` pane menu, both still on right click.
 - `tmux.conf`: window tabs centred in the status bar (`absolute-centre`), with index, padding and a blank between tabs; the current tab bold on a light pill.
 - `bin/tmux-copy-exit-keys` + `tmux.conf`: after a mouse selection any bare key leaves copy-mode and returns to the prompt (key swallowed); ctrl/alt keys, and copy-mode opened from the keyboard or the wheel, keep their vi role.
 - `tmux.conf`: Alt+Left/Right switch windows without the prefix (macOS: map Cmd+arrow in iTerm2 to the `[1;3D` / `[1;3C` escape sequences).
