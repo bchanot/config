@@ -172,3 +172,8 @@ Apply: "fix not working" after merge → diff deployed rc vs template first.
 
 ## LRN-020 — tmux swap-window focus stays on slot, not moved window (2026-11-13)
 2026-11-13, tmux 3.6. `swap-window -t -1` without `-d` keeps focus on current INDEX: window swapped into that slot becomes current, moved window loses focus. Man "new window becomes current" misread as "moved window". Move-window binding needs `swap-window -t -1 \; select-window -t -1` (same for +1). Relative offsets wrap at list ends (first window + `<` swaps with last). Verify headless: scratch socket `-L`, `new-window -t t:` (bare `-t t` → "index 0 in use"), compare `#{window_index} #{window_id} #{window_active}` before/after; names unreliable (plugin renames). See LRN-017 for key tests.
+
+## LRN-021 — tmux bell-action vs monitor-bell: flag highlights even when bells dropped (2026-11-13)
+Context: tmux tabs often highlighted several at once + no bell heard since tmux. Cause tmux.conf `bell-action none`.
+Pattern: `bell-action` only gates forwarding bell to terminal. Tab flag set by `monitor-bell` (default on) regardless, styled by `window-status-bell-style` (default reverse) until window visited. alerts_check_bell() returns early when monitor-bell off → no bell sent at all.
+Apply: silence + no highlight → `setw -g monitor-bell off`. Sound + no highlight → `bell-action any` + `window-status-bell-style default`, monitor-bell stays on. Unattached sessions never ring. Repo edit not live until deployed copy ~/.config/tmux/tmux.conf refreshed + prefix R (LRN-019).
