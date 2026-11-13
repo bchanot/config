@@ -159,3 +159,6 @@ Done: feature merged in develop but ~/.bashrc predated it (only install.sh write
 
 ## 2026-10-30
 - Memory registries → v2 (`memory.sh upgrade`, claude-config BDR-129 phase 4a): `check` green, open blockers unchanged.
+
+## 2026-11-13
+- tmux prefix < > move window left/right (f92b026, feature/tmux-move-window). v1 swap-only reverted: focus stayed on slot; v2 adds select-window. CHANGELOG entry.

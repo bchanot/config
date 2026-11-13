@@ -169,3 +169,6 @@ path must survive inactive unit. Stub `systemctl`/`sudo`/`sshd` on PATH in scrat
 Context: tmux-before-router merged in develop, SSH still showed dtach menu first. ~/.bashrc written only by install.sh (rendered template), predated merge.
 Pattern: after any bash/ or zsh/ edit, redeploy (install.sh, or render template and copy), then diff template vs deployed.
 Apply: "fix not working" after merge → diff deployed rc vs template first.
+
+## LRN-020 — tmux swap-window focus stays on slot, not moved window (2026-11-13)
+2026-11-13, tmux 3.6. `swap-window -t -1` without `-d` keeps focus on current INDEX: window swapped into that slot becomes current, moved window loses focus. Man "new window becomes current" misread as "moved window". Move-window binding needs `swap-window -t -1 \; select-window -t -1` (same for +1). Relative offsets wrap at list ends (first window + `<` swaps with last). Verify headless: scratch socket `-L`, `new-window -t t:` (bare `-t t` → "index 0 in use"), compare `#{window_index} #{window_id} #{window_active}` before/after; names unreliable (plugin renames). See LRN-017 for key tests.
