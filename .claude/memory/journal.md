@@ -162,3 +162,4 @@ Done: feature merged in develop but ~/.bashrc predated it (only install.sh write
 
 ## 2026-11-13
 - tmux prefix < > move window left/right (f92b026, feature/tmux-move-window). v1 swap-only reverted: focus stayed on slot; v2 adds select-window. CHANGELOG entry.
+- tmux multi-tab highlight fixed (702f4a2, bugfix/tmux-bell-highlight): bell-action none dropped bells, monitor-bell still flagged bg tabs reverse. Now bell-action any + window-status-bell-style default. Live server patched via tmux set; deployed copy needs install.sh + prefix R.
